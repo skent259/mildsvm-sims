@@ -1,0 +1,24 @@
+﻿id,description,data parameters ,other parameters,methods run,notes
+3.0.0,"We compare MI-SVM (heuristic and mip), SMM, and MI-SMM (heuristic) based on a principled approach of using all combinations of features for MI-SVM.  The 4 combinations use the rbf kernel and choices of univariate features (skew, kurtosis, 25th percentile, 75th percentile), multivariate features (2-way correlations), neither, or both.  Simulations were run in condor. ","  nbag = c(50, 100, 250),
+  ninst = c(3, 6),
+  nsample = c(20, 50),
+  ncov = 10, 
+  nimp_pos = list(1:5),
+  nimp_neg = list(1:5),
+  positive_prob = 0.15,
+  dist = list(rep(""mvnormal"", 3)),
+  mean = list(list(rep(0.3, 5), rep(0, 5), 0)),
+  sd_of_mean = list(rep(0.5, 3)),
+  cov = list(list(diag(1, nrow = 5), diag(1, nrow = 5), 1)),
+  sample_cov = FALSE,
+  replicate = 1:50
+
+y <- ""bag_label""
+bags <- ""bag_name""
+
+nbag_test <- 500",".cost <- c(1, 10, 100)
+.sigma <- (1/n_cols) * 2 ^ c(-1, 0, 1)
+nfolds_gs = 5","mildsvm qp-heuristic
+mildsvm mip
+smm
+misvm (4 combinations of features)",
