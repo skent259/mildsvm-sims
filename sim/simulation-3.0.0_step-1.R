@@ -6,9 +6,6 @@
 #' See simulation-spreadsheet.xlsx for details 
 ##-----------------------------------------------------------------------------#
 
-sim_dir <- "sim"
-output_dir <- "output/3.0"
-
 library(tidyverse)
 library(here)
 library(glue)
@@ -16,7 +13,7 @@ library(microbenchmark)
 library(moments)
 # devtools::install_github("skent259/mildsvm", ref = "dev-version")
 library(mildsvm)
-source(here(sim_dir, "utils.R"))
+source(here("sim/utils.R"))
 
 ## Command line arguments -----------------------------------------------------#
 #' @argument `i` the process number when using distributed computing
@@ -26,14 +23,13 @@ print(args)
 
 i <- as.integer(args[1]) + 1
 batch_size <- as.integer(args[2])
+output_dir <- args[3]
 
 # default values when run interactively
 i <- if (is.na(i)) 1 else i
 batch_size <- if (is.na(batch_size)) 100 else batch_size
-# 189,000 total, so 1890 runs 
-# batch_size <- if (is.na(batch_size)) 189000 else batch_size # not recommended...
-
-# TODO: set up output as an argument 
+output_dir <- if (is.na(output_dir)) "output/3.0" else output_dir 
+# 1890 runs at `batch_size` = 100, for 189,000 total
 
 ## Output file ----------------------------------------------------------------#
 sim <- "3.0.0"
@@ -41,17 +37,6 @@ step <- "1"
 output_fname <- glue("sim-{sim}-{step}-results_i={str_pad(i, 4, pad = 0)}.rds")
 output_fname <- here(output_dir, output_fname)
 gs_fname <- here(output_dir, glue("gridsearch_spec_{sim}.rds"))
-
-
-# if (local) {
-#   file_dir <- here::here("simulations/mild_mvt_vs_mvn/results/3.0")
-#   # file_name <- "sim-3.1.2-1-results.rds"
-#   file_name <- paste0("sim-3.1.2-1-results_i=", str_pad(i, 4, pad = 0), ".rds")
-# } else {
-#   file_dir <- "/z/Comp/spkent/simulation/mil/3.0" 
-#   file_name <- paste0("sim-3.1.2-1-results_i=", stringr::str_pad(i, 4, pad = 0), ".rds")
-# }
-# 
 
 ## Data set parameters --------------------------------------------------------#
 data_param <- expand_grid(
