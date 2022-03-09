@@ -25,10 +25,13 @@ i <- as.integer(args[1]) + 1
 batch_size <- as.integer(args[2])
 output_dir <- args[3]
 
-# default values when run interactively
-i <- if (is.na(i)) 1 else i
-batch_size <- if (is.na(batch_size)) 100 else batch_size
-output_dir <- if (is.na(output_dir)) "output/3.0" else output_dir 
+#' Set defaults for interactive session 
+set_default <- function(.x, val) { 
+  if(is.na(.x)) val else .x 
+}
+i <- set_default(i, 1)
+batch_size <- set_default(batch_size, 100)
+output_dir <- set_default(output_dir, "output/3.0")
 # 1890 runs at `batch_size` = 100, for 189,000 total
 
 ## Output file ----------------------------------------------------------------#
