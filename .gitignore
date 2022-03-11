@@ -24,6 +24,7 @@ ignore/
 *.DS_Store
 
 # Condor
-condor/out/
-condor/err/
-condor/log/
+*.log
+*.err
+*.out
+log_time.txt
