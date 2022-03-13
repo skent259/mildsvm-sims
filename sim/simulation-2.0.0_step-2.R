@@ -1,6 +1,6 @@
 ##-----------------------------------------------------------------------------#
-#' Simulation 3.0.0
-#'   Testing Mean differences 
+#' Simulation 2.0.0
+#'   Testing small covariance differences
 #'   Step 2 - Test set evaluation on optimal parameters
 #' 
 #' See simulation-spreadsheet.xlsx for details 
@@ -31,11 +31,11 @@ set_default <- function(.x, val) {
 }
 i <- set_default(i, 1)
 batch_size <- set_default(batch_size, 4)
-output_dir <- set_default(output_dir, "output/3.0")
+output_dir <- set_default(output_dir, "output/2.0")
 # 1050 runs at `batch_size` = 4, for 4,200 total
 
 ## Output file ----------------------------------------------------------------#
-sim <- "3.0.0"
+sim <- "2.0.0"
 step <- "2"
 output_fname <- glue("sim-{sim}-{step}-results_i={str_pad(i, 4, pad = 0)}.rds")
 output_fname <- here(output_dir, output_fname)
@@ -45,22 +45,21 @@ step1_fname <- here(output_dir, step1_fname)
 
 ## Data set parameters --------------------------------------------------------#
 data_param <- expand_grid(
-  nbag = c(50, 100, 250),
+  nbag = c(250, 100, 50),
   ninst = c(3, 6),
   nsample = c(20, 50),
   ncov = 10, 
-  nimp_pos = list(1:5),
-  nimp_neg = list(1:5),
+  nimp_pos = list(1:2),
+  nimp_neg = list(2:3),
   positive_prob = 0.15,
   dist = list(rep("mvnormal", 3)),
-  mean = list(list(
-    rep(0.3, 5),
-    rep(0, 5),
-    0
-  )),
+  mean = list(list(rep(0, 2), rep(0, 2), 0)),
   sd_of_mean = list(rep(0.5, 3)),
-  cov = list(list(diag(1, nrow = 5), diag(1, nrow = 5), 1)),
-  sample_cov = FALSE,
+  cov = list(list(matrix(c(1,-0.5, -0.5, 1), nrow = 2),
+                  matrix(c(1,0.5, 0.5, 1), nrow = 2),
+                  1)),
+  sample_cov = TRUE,
+  df_wishart_cov = list(c(2, 2, 8)), 
   replicate = 1:50
 )
 
