@@ -20,11 +20,14 @@ sim <- args[2]
 step <- args[3]
 output_dir <- args[4]
 
-# default values 
-result_dir <- if (is.na(result_dir)) "output/3.0" else result_dir 
-sim <- if (is.na(sim)) "3.0.0" else sim 
-step <- if (is.na(step)) "1" else step 
-output_dir <- if (is.na(output_dir)) result_dir else output_dir
+#' Set defaults for interactive session 
+set_default <- function(.x, val) { 
+  if(is.na(.x)) val else .x 
+}
+result_dir <- set_default(result_dir, "output/3.0")
+sim <- set_default(sim, "3.0.0")
+step <- set_default(step, 1)
+output_dir <- set_default(output_dir, result_dir)
 
 ## Combine files and save -----------------------------------------------------#
 sim_files_pattern <- glue("sim-{sim}-{step}-results_")
@@ -33,7 +36,3 @@ outfile_name <- here(output_dir, outfile_name)
 
 out <- combine_files(result_dir, sim_files_pattern)
 saveRDS(out, outfile_name)
-
-# SIMULATION_FILES_DIR = "/z/Comp/spkent/simulation/orimdb/1.0/"
-# SIMULATION_FILE_PATTERN = "sim-ORIMDB-1.0.2-2a-results_"
-# OUTFILE_PATH_NAME = "/z/Comp/spkent/simulation/orimdb/sim-ORIMDB-1.0.2-2a-results.rds"

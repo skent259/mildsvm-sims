@@ -27,7 +27,8 @@ ignore/
 *.log
 *.err
 *.out
-log_time.txt
+log-time_*
+error-*
 
 # Output 
 output/1.0/
