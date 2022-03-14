@@ -23,6 +23,13 @@ ignore/
 
 *.DS_Store
 
+# R Markdown and output
+*.Rmd
+*.html
+
+# Figures
+fig/
+
 # Condor
 *.log
 *.err
