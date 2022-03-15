@@ -1,3 +1,9 @@
+#' Shuffle rows of a data frame
+#' @param df A data.frame object
+#' @return A data.frame 
+shuffle_rows <- function(df) {
+  df[sample.int(nrow(df)), ]  
+}
 
 #' Cross-validation for MIL data
 #' 
