@@ -2,6 +2,7 @@
 
 Universe    =   vanilla
 Executable  =   /s/bin/R
+batch_name  =   mildsvm-sims-1.0.0-2
 initialdir  =   /ua/spkent/multiple-instance-learning/simulations/mildsvm-sims
 input		=   sim/simulation-1.0.0_step-2.R
 arguments	=   --vanilla --args $(Process) 4 /z/Comp/spkent/simulation/mildsvm-sims/1.0
