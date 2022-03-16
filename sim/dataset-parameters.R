@@ -106,3 +106,28 @@ data_param <- expand_grid(
 )
 
 saveRDS(data_param, here(out_dir, "4.0", "data-param_4.0.0.rds"))
+
+## 5.0.0 ----------------------------------------------------------------------#
+
+data_param <- expand_grid(
+  nbag = 100,
+  ninst = 3,
+  nsample = 50,
+  ncov = 10, 
+  nimp_pos = list(1:5),
+  nimp_neg = list(1:5),
+  positive_prob = 0.15,
+  dist = list(rep("mvnormal", 3)),
+  mean = list(list(
+    rep(0.3, 5),
+    rep(0, 5),
+    0
+  )),
+  sd_of_mean = list(rep(0.5, 3)),
+  cov = c(0.01, 0.02, 0.04, 0.08, 0.16, 0.32, 0.64, 1.28), 
+  sample_cov = FALSE,
+  replicate = 1:50
+) %>%
+  mutate(cov = map(cov, ~list(diag(.x, nrow = 5), diag(.x, nrow = 5), .x)))
+
+saveRDS(data_param, here(out_dir, "5.0", "data-param_5.0.0.rds"))

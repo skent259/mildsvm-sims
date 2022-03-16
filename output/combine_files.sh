@@ -19,3 +19,6 @@ Rscript combine_files.R /z/Comp/spkent/simulation/mildsvm-sims/4.0/ 4.0.0 1 outp
 Rscript combine_files.R /z/Comp/spkent/simulation/mildsvm-sims/4.0/ 4.0.0 2 output/4.0
 Rscript combine_files.R /z/Comp/spkent/simulation/mildsvm-sims/4.0/ 4.0.1 1 output/4.0
 Rscript combine_files.R /z/Comp/spkent/simulation/mildsvm-sims/4.0/ 4.0.1 2 output/4.0
+
+Rscript combine_files.R /z/Comp/spkent/simulation/mildsvm-sims/5.0/ 5.0.0 1 output/5.0
+Rscript combine_files.R /z/Comp/spkent/simulation/mildsvm-sims/5.0/ 5.0.0 2 output/5.0
