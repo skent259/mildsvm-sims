@@ -69,8 +69,8 @@ select_cv_folds <- function(y, bags, n_fold = 5) {
 #' - `val` the data set rows used for validation
 #' - `seed` the seed number set before data set generation and CV fold
 #'   selection. (using `set.seed()` before both operations). 
-define_gridsearch_specs <- function(y, bags, cv_param, model_param = NULL, method = "train-test", ...) {
-  method = match.arg(method)
+define_gridsearch_specs <- function(y, bags, cv_param, model_param = NULL, method = c("train-test", "repeated k-fold"), ...) {
+  method = match.arg(method, c("train-test", "repeated k-fold"))
   dots <- list(...)
   
   if (method == "train-test") {
@@ -102,6 +102,35 @@ define_gridsearch_specs <- function(y, bags, cv_param, model_param = NULL, metho
         out[[i, "train"]] <- list(order[train])
         out[[i, "val"]] <- list(order[val])
         out[[i, "seed"]] <- rep_seeds[ds]
+      }
+    }
+  } else if (method == "repeated k-fold") {
+    out <- with(cv_param, 
+                expand_grid(rep = 1:nrep, fold = 1:nfolds, gs_fold = 1:nfolds_gs))
+    
+    # split the dataset into test, train, and validation for each row of `out`
+    rep_seeds <- ceiling(runif(cv_param$nrep, 0, 2^30))
+    for (rep in 1:cv_param$nrep) {
+      set.seed(rep_seeds[rep])
+      order <- sample(1:length(y))
+      
+      folds <- select_cv_folds(y[order], bags[order], n_fold = cv_param$nfolds)
+      
+      for (fold in 1:cv_param$nfolds) {
+        trainval <- folds$fold_id != fold
+        test <- which(folds$fold_id == fold)
+        
+        gs_folds <- select_cv_folds(y[order][trainval], bags[order][trainval], n_fold = cv_param$nfolds_gs)
+        
+        for (gs_fold in 1:cv_param$nfolds_gs) {
+          train <- which(trainval)[gs_folds$fold_id != gs_fold]
+          val <- which(trainval)[gs_folds$fold_id == gs_fold]
+          
+          i <- which(out$rep == rep & out$fold == fold & out$gs_fold == gs_fold)
+          out[[i, "test"]] <- list(order[test])
+          out[[i, "train"]] <- list(order[train])
+          out[[i, "val"]] <- list(order[val])
+        }
       }
     }
   }
@@ -220,4 +249,113 @@ evaluate_model <- function(row, train_name, test_name, train = TRUE, test = TRUE
     cat("ERROR :",conditionMessage(e), "\n") 
     return(tibble(auc = NA, auc_inst = NA, f1 = NA, time = NA, mipgap = NA))
   })
+}
+
+
+#' Map samples to instances
+#'
+#' Take a sample level indicator on a data frame and translate that to an
+#' instance level indicator.
+#'
+#' @param df A data.frame with column `instance_name` indicating the instance
+#'   level variable
+#' @param sample_level A vector to slice the data frame with.
+#' 
+#' @return A vector which can slive an instance level version of `df`.   
+inst_level <- function(df, sample_level) {
+  kernel_rows <- unique(df[, "instance_name"])
+  rows_to_grab <- unique(df[sample_level, "instance_name"])
+  
+  sapply(rows_to_grab, function(i) which(i == kernel_rows))
+}
+
+#' Fit and evaluate a given model
+#'
+#' This function is similar to the `evaluate_model()` function, except it works
+#' by passing in the full data set and not generating the data automatically. It
+#' also encourages a user to pass in a pre-specified kernel matrix.
+#'
+#' @inheritParams evaluate_model
+#' @param df A data.frame to train on.
+#' @param kernel A pre-computed kernel matrix that is the output of
+#'   `mildsvm::kme()` called on `df`.
+#'   
+#' @return A data.frame with performance metrics such as 
+#' - `auc` The area under ROC based on the bag-level predictions
+#' - `time` The time taken for fitting and prediction
+#' - `mipgap` The reported gap from the MIP procedure in Gurobi, if applicable
+evaluate_model2 <- function(row, df, kernel, train, test, verbose = TRUE) {
+  if (verbose) {
+    cat("Function:", row$fun, ", ", 
+        "Method:", row$method, "\n")
+  }
+  
+  train_df <- df[train, , drop = FALSE]
+  train_inst <- inst_level(df, train)
+  train_kernel <- kernel[train_inst, train_inst]
+  
+  test_df <- df[test, , drop = FALSE]
+  test_inst <- inst_level(df, test)
+  test_kernel <- kernel[test_inst, train_inst]
+  
+  # tryCatch({
+    benchmark <- microbenchmark({
+      
+      if (row$fun == "smm" | (row$fun == "mildsvm" & row$method %in% c("heuristic", "qp-heuristic"))) {
+        row$control$kernel <- train_kernel  
+      }
+      
+      fit <- switch(
+        row$fun,
+        "mildsvm" = mildsvm(
+          train_df,
+          cost = row$cost, 
+          method = row$method,
+          control = row$control
+        ),
+        "smm" = smm(
+          train_df, 
+          cost = row$cost, 
+          control = row$control
+        ),
+        "misvm" = misvm(
+          train_df, 
+          .fns = row$.fns, 
+          cor = row$cor,
+          cost = row$cost,
+          method = row$method,
+          control = row$control
+        )
+      )
+      
+      pred <- switch(
+        row$fun, 
+        "mildsvm" = predict(fit, new_data = test_df, type = "raw", kernel = test_kernel),
+        "smm" = predict(fit, new_data = test_df, type = "raw", kernel = test_kernel),
+        "misvm" = predict(fit, new_data = test_df, type = "raw")
+      )
+      
+    }, times = 1)
+    
+    y_true_bag <- classify_bags(y[test], bags[test])
+    y_pred_bag <- classify_bags(pred$.pred, bags[test])
+    
+    return(tibble(
+      auc = as.double(pROC::auc(response = y_true_bag,
+                                predictor = y_pred_bag,
+                                levels = c(0,1), direction = "<")),
+      auc_inst = as.double(pROC::auc(response = y[test],
+                                     predictor = pred$.pred,
+                                     levels = c(0,1), direction = "<")),
+      f1 = caret::F_meas(data = factor(1*(y_pred_bag > 0), levels = c(0, 1)),
+                         reference = factor(y_true_bag, levels = c(0, 1))),
+      time = benchmark$time / 1e9,
+      mipgap = ifelse(row$method == "mip", fit$gurobi_fit$mipgap, NA)
+    ))
+  
+  # }, 
+  # error = function(e) { 
+  #   cat("ERROR :",conditionMessage(e), "\n") 
+  #   return(tibble(auc = NA, auc_inst = NA, f1 = NA, time = NA, mipgap = NA))
+  # })
 }
