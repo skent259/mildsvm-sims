@@ -8,6 +8,7 @@
 
 library(tidyverse)
 library(here)
+library(rjson)
 
 out_dir <- "output/5.0"
 gridsearch_spec <- readRDS(here(out_dir, "gridsearch_spec_5.0.0.rds"))
@@ -32,3 +33,10 @@ eval_spec <- eval_spec %>%
 ## Save output ----------------------------------------------------------------#
 
 saveRDS(eval_spec, here(out_dir, "eval_spec_5.0.0.rds"))
+
+# JSON for reading in Python
+eval_spec_json <- toJSON(eval_spec)
+write(eval_spec_json, here(out_dir, "eval_spec_5.0.0.json")) 
+
+# eval_spec_tmp <- fromJSON(file = here(out_dir, "eval_spec_5.0.0.json"))
+# as_tibble(eval_spec_tmp)

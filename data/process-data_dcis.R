@@ -48,6 +48,7 @@ d <- mildsvm::as_mild_df(bind_cols(
 
 ## Save output ----------------------------------------------------------------#
 saveRDS(d, here(proc_dir, "mild-dcis-ff.rds"))
+write_csv(d, here(proc_dir, "mild-dcis-ff.csv"))
 
 # Pre-compute kernel matrix, then save
 n_cols <- ncol(d) - 3
