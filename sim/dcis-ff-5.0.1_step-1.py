@@ -14,7 +14,8 @@ import pandas as pd
 import tensorflow as tf
 import numpy as np
 
-from mmi.dataset import MMIMNIST
+from sim.utils import DCISFF
+
 from mmi.loss    import BinaryCrossEntropyLoss, BinaryAccuracy,\
                         L1Regularizer, L2Regularizer
 from mmi.model   import Sigmoid, ReLU, Softmax, Convolution2D,\
@@ -41,8 +42,6 @@ else:
 # 100 runs at `batch_size` = 1, for 100 total 
 batch_size = 1 # note: only batch_size = 1 is supported currently
 
-# output_dir = "/z/Comp/spkent/simulation/mildsvm-sims/5.0"
-
 ## Pull in evaluation spec -----------------------------------------------------#
 
 #' See dcis-ff-5.0.0_step-1.R and gs-to-eval-spec_5.0.0.R for details.  
@@ -66,63 +65,6 @@ df = pd.read_csv(Path(data_dir, "mild-dcis-ff.csv"))
 
 df_train = df.iloc[train_ind, :]
 df_test = df.iloc[test_ind, :]
-
-class DCISFF(object):
-    """
-    Loosely based off of MMIMNIST here: https://github.com/alessandro-t/mmi/blob/master/mmi/dataset.py
-    """
-    def __init__(self, df, seed=None):
-        self.X = np.array(df.iloc[:, 4:23])
-        self.y = np.array(df["bag_label"])
-        self.bags = np.array(df["bag_name"])
-        self.inst = np.array(df["instance_name"])
-        self.seed = seed
-        if seed is not None:
-            np.random.seed(seed)
-    
-    def get_minibatches(self, mb_size, shuffle=True):
-        """
-        grab `mb_size` number of top bags randomly (shuffled)
-        output:
-        - `X_batch`: The data set with all rows (samples/instances) in the top bag
-        - `right_i-left_i`: The number of indices taken
-        - `y_batch`: The labels of the top bags from the batch (length mb_size)
-        - `new_seg_ids`: An array with two columns, the first indicates the index of the top bag (0:mb_size) and 
-          the second indicates the index of the sub bag (within the bag, 0:n_subbag).  
-        """
-        assert type(mb_size) == int
-        assert mb_size > 0
-
-        self.unique_bags = np.unique(self.bags)
-
-        n_samples = len(self.unique_bags)
-        n_batches = np.ceil(1.*n_samples/mb_size).astype(np.int32)
-
-        all_indices = np.arange(n_samples)
-        if shuffle:
-            np.random.shuffle(all_indices)
-        
-        for b in range(n_batches):
-            left_i  = b*mb_size
-            right_i = min((b+1)*mb_size, n_samples)
-
-            curr_ind = all_indices[left_i:right_i]
-
-            row_inds = [np.where(self.bags == x)[0] for x in self.unique_bags[curr_ind]]
-            rows = np.hstack(row_inds)
-            X_batch = self.X[rows,] 
-            y_batch = self.y[[ind[0] for ind in row_inds]].astype(np.float32)
-
-            seg_ids = []
-            for i,ind in enumerate(row_inds):
-                bag_i = np.unique(self.inst[ind])
-                for j,inst_j in enumerate(bag_i):
-                    n_j = len(np.where(self.inst == inst_j)[0])
-                    for k in range(n_j):
-                        seg_ids.append([i,j])
-            seg_ids = np.array(seg_ids)
-
-            yield X_batch, right_i-left_i, y_batch, seg_ids
 
 train = DCISFF(df_train, seed = 8)
 test = DCISFF(df_test, seed = 8)
@@ -153,7 +95,7 @@ input_shape = {
 model.compile_(input_shape, BinaryCrossEntropyLoss(),\
                callbacks=[BinaryAccuracy(), L2Regularizer(5e-4)],\
                optimizer='adam', learning_rate=1e-3,\
-               debug_folder=Path(output_dir, i, 'debug/'))
+               debug_folder=Path(output_dir, str(i), 'debug/'))
 
 
 ## Evaluate models in current batch -------------------------------------------#
