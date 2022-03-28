@@ -46,3 +46,4 @@ output/5.0/
 
 # Data
 *.csv
+debug/
