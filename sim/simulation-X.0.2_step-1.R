@@ -33,9 +33,9 @@ set_default <- function(.x, val) {
 }
 sim <- set_default(sim, "1.0.2")
 i <- set_default(i, 1)
-batch_size <- set_default(batch_size, 200)
+batch_size <- set_default(batch_size, 50)
 output_dir <- set_default(output_dir, "output/1.0")
-# 540 runs at `batch_size` = 200, for 108,000 total
+# 540 runs at `batch_size` = 50, for 27,000 total
 
 ## Output file ----------------------------------------------------------------#
 step <- "1"

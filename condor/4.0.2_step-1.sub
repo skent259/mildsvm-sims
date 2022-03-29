@@ -1,0 +1,29 @@
+# Condor submission file for R.
+
+Universe    =   vanilla
+Executable  =   /s/bin/R
+batch_name  =   mildsvm-sims-4.0.2-1
+initialdir  =   /ua/spkent/multiple-instance-learning/simulations/mildsvm-sims
+input		=   sim/simulation-X.0.2_step-1.R
+arguments	=   --vanilla --args 4.0.2 $(Process) 50 /z/Comp/spkent/simulation/mildsvm-sims/4.0
+environment =   "GUROBI_HOME=/s/pkg/linux64/gurobi/gurobi910/linux64 LD_LIBRARY_PATH=/s/pkg/linux64/gurobi/gurobi910/linux64/lib GRB_LICENSE_FILE=/s/pkg/linux64/gurobi/gurobi.lic" 
+
+request_cpus = 1
+request_memory = 3000M
+
+# only run 1000/2 = 500 jobs at once 
+concurrency_limits = spkent:2
+
+# -----
+# Send the job to Held state on failure.
+on_exit_hold = (ExitBySignal == True) || (ExitCode != 0)
+ 
+# Periodically retry the jobs every 10 minutes, up to a maximum of 10 retries.
+periodic_release = (NumJobStarts < 20) && ((CurrentTime - EnteredCurrentStatus) > 100)
+# -----
+
+output		=	condor/4.0.0/out/$(Process).out
+error       =   condor/4.0.0/err/$(Process).err
+log         =   condor/4.0.0/log/$(Process).log
+Queue 540
+
