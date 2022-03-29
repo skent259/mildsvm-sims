@@ -194,6 +194,14 @@ evaluate_model <- function(row, train_name, test_name, train = TRUE, test = TRUE
   train_df <- train_df[train, , drop = FALSE]
   test_df <- test_df[test, , drop = FALSE]
   
+  # Treat bags as instances, and ignore the instance structure.
+  if (row$fun == "smm_bag") {
+    train_df$instance_name <- NULL
+    test_df$instance_name <- NULL
+    formula <- bag_label ~ .
+    class(train_df) <- class(test_df) <- "data.frame"
+  }
+  
   tryCatch({
     benchmark <- microbenchmark({
       
@@ -217,6 +225,13 @@ evaluate_model <- function(row, train_name, test_name, train = TRUE, test = TRUE
           cost = row$cost,
           method = row$method,
           control = row$control
+        ),
+        "smm_bag" = smm(
+          formula,
+          train_df, 
+          instances = "bag_name", 
+          cost = row$cost,
+          control = row$control
         )
       )
 
@@ -224,7 +239,8 @@ evaluate_model <- function(row, train_name, test_name, train = TRUE, test = TRUE
         row$fun, 
         "mildsvm" = predict(fit, new_data = test_df, type = "raw"),
         "smm" = predict(fit, new_data = test_df, type = "raw"),
-        "misvm" = predict(fit, new_data = test_df, type = "raw")
+        "misvm" = predict(fit, new_data = test_df, type = "raw"),
+        "smm_bag" = predict(fit, new_data = test_df, type = "raw")
       )
       
     }, times = 1)
@@ -298,7 +314,7 @@ evaluate_model2 <- function(row, df, kernel, train, test, verbose = TRUE) {
   test_inst <- inst_level(df, test)
   test_kernel <- kernel[test_inst, train_inst]
   
-  # tryCatch({
+  tryCatch({
     benchmark <- microbenchmark({
       
       if (row$fun == "smm" | (row$fun == "mildsvm" & row$method %in% c("heuristic", "qp-heuristic"))) {
@@ -352,10 +368,9 @@ evaluate_model2 <- function(row, df, kernel, train, test, verbose = TRUE) {
       time = benchmark$time / 1e9,
       mipgap = ifelse(row$method == "mip", fit$gurobi_fit$mipgap, NA)
     ))
-  
-  # }, 
-  # error = function(e) { 
-  #   cat("ERROR :",conditionMessage(e), "\n") 
-  #   return(tibble(auc = NA, auc_inst = NA, f1 = NA, time = NA, mipgap = NA))
-  # })
+  },
+  error = function(e) {
+    cat("ERROR :",conditionMessage(e), "\n")
+    return(tibble(auc = NA, auc_inst = NA, f1 = NA, time = NA, mipgap = NA))
+  })
 }
