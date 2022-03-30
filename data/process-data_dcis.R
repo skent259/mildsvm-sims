@@ -63,3 +63,17 @@ for (sigma in sigma_list) {
   })) 
   cat("\n")
 }
+
+# Pre-compute kernel matrix at bag level, for `smm_bag`
+d2 <- d
+d2$bag_label <- d2$instance_name <- NULL
+d2 <- d2 %>% rename(instance_name = bag_name)
+
+for (sigma in sigma_list) {
+  cat("sigma:", sigma, "\n")
+  print(system.time({
+    kernel <- mildsvm::kme(d2, sigma = sigma)
+    fname <- glue("dcis-ff-kernel-full_bag_sigma=({sigma}).rds")
+    saveRDS(kernel, here(proc_dir, fname))  
+  }))
+}
