@@ -285,6 +285,18 @@ inst_level <- function(df, sample_level) {
   sapply(rows_to_grab, function(i) which(i == kernel_rows))
 }
 
+#' Map samples to bags
+#' 
+#' Similar to `inst_level()`.
+#' 
+#' @inheritParams inst_level
+bag_level <- function(df, sample_level) {
+  kernel_rows <- unique(df[, "bag_name"])
+  rows_to_grab <- unique(df[sample_level, "bag_name"])
+  
+  sapply(rows_to_grab, function(i) which(i == kernel_rows))
+}
+
 #' Fit and evaluate a given model
 #'
 #' This function is similar to the `evaluate_model()` function, except it works
@@ -306,18 +318,37 @@ evaluate_model2 <- function(row, df, kernel, train, test, verbose = TRUE) {
         "Method:", row$method, "\n")
   }
   
-  train_df <- df[train, , drop = FALSE]
-  train_inst <- inst_level(df, train)
-  train_kernel <- kernel[train_inst, train_inst]
+  # browser() 
   
+  train_df <- df[train, , drop = FALSE]
   test_df <- df[test, , drop = FALSE]
+  
+  train_inst <- inst_level(df, train)
   test_inst <- inst_level(df, test)
+  
+  # Treat bags as instances, and ignore the instance structure.
+  if (row$fun == "smm_bag") {
+    train_df$instance_name <- NULL
+    test_df$instance_name <- NULL
+    formula <- bag_label ~ .
+    class(train_df) <- class(test_df) <- "data.frame"
+    
+    train_inst = bag_level(df, train)
+    test_inst = bag_level(df, train)
+  }
+  
+  train_kernel <- kernel[train_inst, train_inst]
   test_kernel <- kernel[test_inst, train_inst]
+  
   
   tryCatch({
     benchmark <- microbenchmark({
       
-      if (row$fun == "smm" | (row$fun == "mildsvm" & row$method %in% c("heuristic", "qp-heuristic"))) {
+      if (
+        row$fun == "smm" | 
+        (row$fun == "mildsvm" & row$method %in% c("heuristic", "qp-heuristic")) | 
+        (row$fun == "smm_bag")
+      ) {
         row$control$kernel <- train_kernel  
       }
       
@@ -341,6 +372,13 @@ evaluate_model2 <- function(row, df, kernel, train, test, verbose = TRUE) {
           cost = row$cost,
           method = row$method,
           control = row$control
+        ),
+        "smm_bag" = smm(
+          formula,
+          train_df, 
+          instances = "bag_name", 
+          cost = row$cost,
+          control = row$control
         )
       )
       
@@ -348,7 +386,8 @@ evaluate_model2 <- function(row, df, kernel, train, test, verbose = TRUE) {
         row$fun, 
         "mildsvm" = predict(fit, new_data = test_df, type = "raw", kernel = test_kernel),
         "smm" = predict(fit, new_data = test_df, type = "raw", kernel = test_kernel),
-        "misvm" = predict(fit, new_data = test_df, type = "raw")
+        "misvm" = predict(fit, new_data = test_df, type = "raw"),
+        "smm_bag" = predict(fit, new_data = test_df, type = "raw", kernel = test_kernel)
       )
       
     }, times = 1)
