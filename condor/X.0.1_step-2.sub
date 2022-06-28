@@ -2,16 +2,17 @@
 
 Universe    =   vanilla
 Executable  =   /s/bin/R
+batch_name  =   mildsvm-sims-X.0.1-2
 initialdir  =   /ua/spkent/multiple-instance-learning/simulations/mildsvm-sims
-input		=   sim/simulation-4.0.0_step-1.R
-arguments	=   --vanilla --args $(Process) 50 /z/Comp/spkent/simulation/mildsvm-sims/4.0
+input		=   sim/simulation-X.0.1_step-2.R
+arguments	=   --vanilla --args ($sim).1 $(Process) 5 /z/Comp/spkent/simulation/mildsvm-sims/($sim)
 environment =   "GUROBI_HOME=/s/pkg/linux64/gurobi/gurobi910/linux64 LD_LIBRARY_PATH=/s/pkg/linux64/gurobi/gurobi910/linux64/lib GRB_LICENSE_FILE=/s/pkg/linux64/gurobi/gurobi.lic" 
 
 request_cpus = 1
 request_memory = 3000M
 
-# only run 1000/3 = 333 jobs at once 
-concurrency_limits = spkent:3
+# only run 1000/20 = 50 jobs at once 
+concurrency_limits = spkent:20
 
 # -----
 # Send the job to Held state on failure.
@@ -21,8 +22,8 @@ on_exit_hold = (ExitBySignal == True) || (ExitCode != 0)
 periodic_release = (NumJobStarts < 20) && ((CurrentTime - EnteredCurrentStatus) > 100)
 # -----
 
-output		=	condor/4.0.0/out/$(Process).out
-error       =   condor/4.0.0/err/$(Process).err
-log         =   condor/4.0.0/log/$(Process).log
-Queue 3780
+output		=	condor/($sim).0/out/$(Process).out
+error       =   condor/($sim).0/err/$(Process).err
+log         =   condor/($sim).0/log/$(Process).log
 
+Queue 480 sim in (1.0, 2.0, 3.0, 4.0)
