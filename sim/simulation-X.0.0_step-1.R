@@ -1,6 +1,6 @@
 ##-----------------------------------------------------------------------------#
-#' Simulation 1.0.0
-#'   Testing MVT vs MVN (tail differences)
+#' Simulation X.0.0
+#'   Works for 1.0.0, 2.0.0, 3.0.0, 4.0.0
 #'   Step 1 - Grid-search cross-validation for optimal parameters
 #' 
 #' See simulation-spreadsheet.xlsx for details 
@@ -14,52 +14,38 @@ library(moments)
 # devtools::install_github("skent259/mildsvm", ref = "dev-version")
 library(mildsvm)
 source(here("sim/utils.R"))
+source(here("analysis/utils.R"))
 
 ## Command line arguments -----------------------------------------------------#
 #' @argument `i` the process number when using distributed computing
 #' @argument `batch_size` the number of models to run in this iteration
-args = commandArgs(trailingOnly = TRUE)
+args <- commandArgs(trailingOnly = TRUE)
 print(args)
 
-i <- as.integer(args[1]) + 1
-batch_size <- as.integer(args[2])
-output_dir <- args[3]
+sim <- args[1]
+i <- as.integer(args[2]) + 1
+batch_size <- as.integer(args[3])
+output_dir <- args[4]
 
 #' Set defaults for interactive session 
 set_default <- function(.x, val) { 
   if(is.na(.x)) val else .x 
 }
+sim <- set_default(sim, "1.0.0")
 i <- set_default(i, 1)
 batch_size <- set_default(batch_size, 50)
 output_dir <- set_default(output_dir, "output/1.0")
 # 3780 runs at `batch_size` = 50, for 189,000 total
 
 ## Output file ----------------------------------------------------------------#
-sim <- "1.0.0"
 step <- "1"
 output_fname <- glue("sim-{sim}-{step}-results_i={str_pad(i, 4, pad = 0)}.rds")
 output_fname <- here(output_dir, output_fname)
 gs_fname <- here(output_dir, glue("gridsearch_spec_{sim}.rds"))
 
 ## Data set parameters --------------------------------------------------------#
-data_param <- expand_grid(
-  nbag = c(250, 100, 50),
-  ninst = c(3, 6),
-  nsample = c(20, 50),
-  ncov = 10, 
-  nimp_pos = list(1:5),
-  nimp_neg = list(1:5),
-  positive_prob = 0.15,
-  dist = list(c("mvt", 
-                "mvnormal", 
-                "mvnormal")),
-  degree = list(c(3, NA, NA)), 
-  mean = list(list(rep(0, 5), rep(0, 5), 0)),
-  sd_of_mean = list(rep(0.5, 3)),
-  cov = list(list(diag(1, nrow = 5), diag(1, nrow = 5), 1)),
-  sample_cov = FALSE,
-  replicate = 1:50
-)
+# see sim/dataset-parameters.R
+data_param <- read_data_param(sim) %>% select(-train_name, -sim)
 
 y <- "bag_label"
 bags <- "bag_name"
@@ -140,6 +126,7 @@ if (file.exists(gs_fname)) {
     data_fun = mildsvm::generate_mild_df,
     data_param = data_param
   )
+  gridsearch_spec <- shuffle_rows(gridsearch_spec)
   saveRDS(gridsearch_spec, gs_fname)
 }
 
