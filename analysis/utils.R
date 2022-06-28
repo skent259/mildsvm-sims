@@ -1,8 +1,8 @@
 #' Read in results file 
 #' @param sim A string denoting the simulation number, i.e. "3.0.0".
-read_results <- function(sim, results_dir = "output") {
+read_results <- function(sim, results_dir = "output", step = 2) {
   sim_sm <- str_sub(sim, 1, 3) 
-  fname <- here(results_dir, sim_sm, glue("mildsvm-sims-results-{sim}-2.rds"))
+  fname <- here(results_dir, sim_sm, glue("mildsvm-sims-results-{sim}-{step}.rds"))
   read_rds(fname) %>% 
     dplyr::mutate(sim = sim)
 }
@@ -29,13 +29,14 @@ read_data_param <- function(sim,  results_dir = "output") {
 #'   `nsample`, and `nbag`.
 #'   
 #' @return A ggplot object. 
-create_results_plot <- function(data, methods, facets = ninst + nsample ~ nbag) {
+create_results_plot <- function(data, methods, facets = ninst + nsample ~ nbag,
+                                alpha = 0.5) {
   data %>% 
     ggplot(aes(x = auc, y = method_name, color = method_name)) +
     ggbeeswarm::geom_quasirandom(
       aes(color = method_name, group = method_name),
       groupOnX = FALSE, 
-      alpha = 0.5
+      alpha = alpha
     ) +
     geom_vline(xintercept = 0.5, color = "grey40") +
     geom_errorbarh(stat = "summary",

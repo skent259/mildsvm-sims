@@ -24,11 +24,14 @@ ignore/
 *.DS_Store
 
 # R Markdown and output
-*.Rmd
 *.html
 
 # Figures
 fig/
+
+# Tables
+create-tables.tex
+create-tables.pdf
 
 # Condor
 *.log
@@ -47,3 +50,5 @@ output/5.0/
 # Data
 *.csv
 debug/
+
+.vscode/

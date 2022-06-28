@@ -1,0 +1,108 @@
+---
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  pdf_document: 
+    keep_tex: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+    echo = FALSE,
+    cache = FALSE,
+    warning = FALSE,
+    message = FALSE,
+    fig.align = "center"
+)
+
+library(tidyverse)
+library(here)
+library(glue)
+library(scales)
+library(knitr)
+library(kableExtra)
+source(here("analysis/utils.R"))
+
+# Tables
+kable_standard <- function(...) {
+    kable(booktabs = TRUE, linesep = "", ...) %>% 
+        kable_styling(full_width = FALSE)
+}
+
+res_dir <- "output"
+fig_dir <- "fig"
+
+options(knitr.kable.NA = "—")
+```
+
+
+```{r}
+sims <- c("5.0.0", "5.0.1", "5.0.2")
+steps <- c(2, 3, 2)
+
+results <- 
+  map2(sims, steps, ~read_results(.x, step = .y)) %>% 
+  bind_rows()
+
+results_mod <- results %>% 
+  hoist(control, "kernel") %>% 
+  mutate(method_name = glue("{str_to_upper(fun)} (",
+                            "{ifelse(is.na(method), '', glue('{method}'))}",
+                            "{ifelse(fun == 'misvm', glue(' {kernel} '), '')}", 
+                            "{ifelse(fun == 'misvm', names(.fns), '')}",
+                            "{ifelse(fun == 'misvm', ifelse(cor, ' cor', ''), '')})"),
+         sim = str_sub(sim, 1, 3)) %>% 
+  select(method_name, sim, everything())
+
+results_mod <-
+  results_mod %>% 
+  group_by(method_name, fun, method, kernel, .fns, cor, rep) %>% 
+  summarize(auc = mean(auc), 
+            time = sum(time) + sum(sum_time), 
+            .groups = "drop_last")
+
+methods_to_show <- tribble(
+  ~method, ~short_name, ~color, 
+  "MISVM (qp-heuristic radial univariate cor)", "MI-SVM (univ1, univ2, cor)", "#13317DFF",
+  "MISVM (qp-heuristic radial baseline cor)", "MI-SVM (univ1, cor)", "#434C99FF",
+  "MISVM (qp-heuristic radial univariate)", "MI-SVM (univ1, univ2)", "#5F66AFFF",
+  "MISVM (qp-heuristic radial baseline)", "MI-SVM (univ1)", "#7180C1FF",
+  "MMIL ()", "MMIL", "#C1AF95FF", 
+  "SMM_BAG ()", "SMM", "#79D1D1FF",
+  "SMM ()", "SI-SMM", "#79D1D1FF",
+  "MILDSVM (qp-heuristic)", "MI-SMM (heuristic)", "#EB7157FF",
+  "MILDSVM (mip)", "MI-SMM (MIQP)", "#F5542CFF",
+)
+
+```
+
+```{r}
+
+table_type <- "latex" # "latex"
+
+auc_metrics <-
+  results_mod %>% 
+  filter(method_name %in% methods_to_show$method) %>%
+  summarize(auc_mean = mean(auc), 
+            auc_sd = sd(auc),
+            n = n(), 
+            .groups = "drop") %>% 
+  mutate(auc_se = auc_sd / sqrt(n),
+         bold = auc_mean >= max(auc_mean) - 2*auc_se,
+         across(c(auc_mean, auc_sd),
+                list("l" = ~cell_spec(number(.x, 0.001), table_type, bold = bold)))
+  ) %>% 
+  arrange(factor(method_name, levels = rev(methods_to_show$method)))
+
+tbl <- auc_metrics %>% 
+  left_join(methods_to_show, by = c("method_name" = "method")) %>% 
+  select(short_name, auc_mean_l, auc_sd_l) 
+
+tbl %>% 
+  kable_standard(caption = "Summary of Results",
+                 col.names = c("Method", "Mean", "SD"),
+                 align = "lrr",
+                 escape = FALSE) %>% 
+  add_header_above(c(" " = 1, "AUROC" = 2))
+
+```
+
