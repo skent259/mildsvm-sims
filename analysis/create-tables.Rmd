@@ -35,12 +35,109 @@ options(knitr.kable.NA = "—")
 ```
 
 
+## Table 1 - Subject level differences in mean fiber measurements 
+
 ```{r}
-sims <- c("5.0.0", "5.0.1", "5.0.2")
-steps <- c(2, 3, 2)
+
+data_dir <- "data/raw"
+d <- readRDS(here(data_dir, "dcis-fiber-features.rds")) %>% 
+  as_tibble()
+
+# Set up MIL structure and select covariates
+d <- d %>% 
+  mutate(bag_label = 1*(TN == "T"),
+         bag_name = paste0(pid, "-", TN),
+         instance_name = paste0(pid, "-", TN, "-", sid)) %>% 
+  select(bag_label, bag_name, instance_name, 
+         tl, eel, w, nrba, c, 
+         dn2, dn4, dn8, dn16, mnd, sdnd, 
+         an2, an4, an8, an16, mna, sdna, 
+         ba32, ba64, ba128) %>% 
+  mildsvm::as_mild_df()
+
+
+ff_name <- c(
+  "tl" = "Total length", 
+  "eel" = "End-to-end length", 
+  "w" = "Width", 
+  "nrba" = "Nearest relative boundary angle", 
+  "c" = "Curvature", 
+  "dn2" = "Distance to nearest 2", 
+  "dn4" = "Distance to nearest 4", 
+  "dn8" = "Distance to nearest 8", 
+  "dn16" = "Distance to nearest 16", 
+  "mnd" = "Mean nearest distance", 
+  "sdnd" = "Std nearest distance", 
+  "an2" = "Alignment of nearest 2", 
+  "an4" = "Alignment of nearest 4", 
+  "an8" = "Alignment of nearest 8", 
+  "an16" = "Alignment of nearest 16", 
+  "mna" = "Mean nearest alignment", 
+  "sdna" = "Std nearest alignment", 
+  "ba32" = "Box alignment 32", 
+  "ba64" = "Box alignment 64", 
+  "ba128" = "Box alignment 128"
+)
+
+ 
+```
+
+```{r}
+bag_summary <- 
+  d %>% 
+  group_by(bag_label, bag_name) %>% 
+  select(-instance_name) %>% 
+  summarize(across(everything(), mean),
+            .groups = "drop") 
+
+t_test <- 
+  bag_summary %>% 
+  select(-bag_name) %>% 
+  pivot_longer(cols = -bag_label) %>% 
+  pivot_wider(names_from = "bag_label",
+              names_prefix = "bag_label_", 
+              values_from = "value",
+              values_fn = list) %>% 
+  mutate(
+    t = map2(bag_label_0, bag_label_1, ~t.test(.x, .y)),
+    est = map(t, "estimate"), 
+    p = map_chr(t, ~scales::pvalue(.x$p.value, 0.0001))
+  ) 
+
+tbl <- t_test %>% 
+  unnest_wider(est) %>% 
+  rename(mean_0 = `mean of x`, mean_1 = `mean of y`) %>% 
+  left_join(enframe(ff_name), by = "name") %>% 
+  select(value, mean_0, mean_1, p)
+```
+
+
+```{r fiber-comparison}
+tbl %>% 
+  kable_standard(caption = "Comparison of subject-level averages of morphologic features.", 
+                 col.names = c("Variable", "Non-tumor", "Tumor", "P value"),
+                 digits = 2, 
+                 align = "lrrr",
+                 escape = FALSE) %>% 
+  add_header_above(c(" " = 1, "Mean" = 2, " " = 1))
+
+
+```
+
+
+
+
+
+## Table 2 - Fiber feature results
+
+
+```{r}
+sims <- c("5.0.0")
+steps <- c(2)
+res_dir <- "output"
 
 results <- 
-  map2(sims, steps, ~read_results(.x, step = .y)) %>% 
+  map2(sims, steps, ~read_results(.x, res_dir, step = .y)) %>% 
   bind_rows()
 
 results_mod <- results %>% 
@@ -60,22 +157,22 @@ results_mod <-
             time = sum(time) + sum(sum_time), 
             .groups = "drop_last")
 
+
 methods_to_show <- tribble(
   ~method, ~short_name, ~color, 
-  "MISVM (qp-heuristic radial univariate cor)", "MI-SVM (univ1, univ2, cor)", "#13317DFF",
-  "MISVM (qp-heuristic radial baseline cor)", "MI-SVM (univ1, cor)", "#434C99FF",
-  "MISVM (qp-heuristic radial univariate)", "MI-SVM (univ1, univ2)", "#5F66AFFF",
-  "MISVM (qp-heuristic radial baseline)", "MI-SVM (univ1)", "#7180C1FF",
-  "MMIL ()", "MMIL", "#C1AF95FF", 
-  "SMM_BAG ()", "SMM", "#79D1D1FF",
+  "MISVM (qp-heuristic radial univariate cor)", "MI-SVM (UNIV1, UNIV2, COR)", "#13317DFF",
+  "MISVM (qp-heuristic radial baseline cor)", "MI-SVM (UNIV1, COR)", "#434C99FF",
+  "MISVM (qp-heuristic radial univariate)", "MI-SVM (UNIV1, UNIV2)", "#5F66AFFF",
+  "MISVM (qp-heuristic radial baseline)", "MI-SVM (UNIV1)", "#7180C1FF",
   "SMM ()", "SI-SMM", "#79D1D1FF",
-  "MILDSVM (qp-heuristic)", "MI-SMM (heuristic)", "#EB7157FF",
+  "MILDSVM (qp-heuristic)", "MI-SMM (HEURISTIC)", "#EB7157FF",
   "MILDSVM (mip)", "MI-SMM (MIQP)", "#F5542CFF",
 )
-
 ```
 
+
 ```{r}
+## Table 1 - Fiber feature results --------------------------------------------#
 
 table_type <- "latex" # "latex"
 
@@ -95,8 +192,11 @@ auc_metrics <-
 
 tbl <- auc_metrics %>% 
   left_join(methods_to_show, by = c("method_name" = "method")) %>% 
-  select(short_name, auc_mean_l, auc_sd_l) 
+  select(short_name, auc_mean_l, auc_sd_l)
+```
 
+
+```{r fiber-results}
 tbl %>% 
   kable_standard(caption = "Summary of Results",
                  col.names = c("Method", "Mean", "SD"),

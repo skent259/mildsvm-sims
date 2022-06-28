@@ -1,8 +1,8 @@
 #' Read in results file 
 #' @param sim A string denoting the simulation number, i.e. "3.0.0".
 read_results <- function(sim, results_dir = "output", step = 2) {
-  sim_sm <- str_sub(sim, 1, 3) 
-  fname <- here(results_dir, sim_sm, glue("mildsvm-sims-results-{sim}-{step}.rds"))
+  sim_sm <- stringr::str_sub(sim, 1, 3) 
+  fname <- here::here(results_dir, sim_sm, glue::glue("mildsvm-sims-results-{sim}-{step}.rds"))
   read_rds(fname) %>% 
     dplyr::mutate(sim = sim)
 }
@@ -10,8 +10,8 @@ read_results <- function(sim, results_dir = "output", step = 2) {
 #' Read in data parameter file 
 #' @param sim A string denoting the simulation number, i.e. "3.0.0".
 read_data_param <- function(sim,  results_dir = "output") {
-  sim_sm <- str_sub(sim, 1, 3)
-  fname <- here(results_dir, sim_sm, glue("data-param_{sim_sm}.0.rds"))
+  sim_sm <- stringr::str_sub(sim, 1, 3)
+  fname <- here::here(results_dir, sim_sm, glue::glue("data-param_{sim_sm}.0.rds"))
   read_rds(fname) %>% 
     dplyr::mutate(train_name = dplyr::row_number(), sim = sim)
 }
