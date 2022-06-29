@@ -17,8 +17,10 @@ source(here("sim/utils.R"))
 source(here("analysis/utils.R"))
 
 ## Command line arguments -----------------------------------------------------#
+#' @argument `sim` the simulation number to run
 #' @argument `i` the process number when using distributed computing
 #' @argument `batch_size` the number of models to run in this iteration
+#' @argument `output_dir` the directory where the output files should be written
 args <- commandArgs(trailingOnly = TRUE)
 print(args)
 

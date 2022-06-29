@@ -1,6 +1,5 @@
 ##-----------------------------------------------------------------------------#
-#' Simulation 1.0.0
-#'   Testing MVT vs MVN (tail differences)
+#' Simulation 5.0.0 - fiber features
 #'   Step 1 - Grid-search cross-validation for optimal parameters
 #' 
 #' See simulation-spreadsheet.xlsx for details 
@@ -18,9 +17,9 @@ source(here("sim/utils.R"))
 ## Command line arguments -----------------------------------------------------#
 #' @argument `i` the process number when using distributed computing
 #' @argument `batch_size` the number of models to run in this iteration
-#' @argument `output_dir` the directory to save output to
+#' @argument `output_dir` the directory where the output files should be written
 #' @argument `data_dir` the directory that data is saved in 
-args = commandArgs(trailingOnly = TRUE)
+args <- commandArgs(trailingOnly = TRUE)
 print(args)
 
 i <- as.integer(args[1]) + 1
@@ -29,14 +28,14 @@ output_dir <- args[3]
 data_dir <- args[4]
 
 #' Set defaults for interactive session 
-set_default <- function(.x, val) { 
+set_default <- function(.x, val) {
   if (is.na(.x)) val else .x 
 }
 i <- set_default(i, 1)
-batch_size <- set_default(batch_size, 25)
+batch_size <- set_default(batch_size, 10)
 output_dir <- set_default(output_dir, "output/5.0")
 data_dir <- set_default(data_dir, "data/processed")
-# 3780 runs at `batch_size` = 50, for 189,000 total
+# 3150 runs at `batch_size` = 10, for 31,500 total
 
 
 ## Output file ----------------------------------------------------------------#
@@ -169,12 +168,6 @@ out <- gs_spec_this_batch %>%
     test = .x$val,
   )) %>%
   bind_cols(gs_spec_this_batch)
-
-# out <- gs_spec_sub %>% 
-#   transpose() %>% 
-#   map_dfr(~evaluate_model(.x, df = df, kernel = get_kernel(.x$control$sigma), train = .x$train, test = .x$val)) %>% 
-#   bind_cols(gs_spec_sub)
-
 
 if (!dir.exists(output_dir)) {
   dir.create(output_dir, recursive = TRUE)
