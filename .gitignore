@@ -41,11 +41,9 @@ log-time_*
 error-*
 
 # Output 
-output/1.0/
-output/2.0/
-output/3.0/
-output/4.0/
-output/5.0/
+!mildsvm-sims-results*.0.0-1.rds
+!mildsvm-sims-results*.0.0-2.rds
+*.json
 
 # Data
 *.csv
