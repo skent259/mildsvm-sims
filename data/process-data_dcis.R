@@ -15,7 +15,7 @@ proc_dir <- "data/processed"
 
 ## Pull in data ---------------------------------------------------------------#
 
-d <-readRDS(here(raw_dir, "dcis-fiber-features.rds")) %>%
+d <- readRDS(here(raw_dir, "dcis-fiber-features.rds")) %>%
   na.omit() # remove 63 out of 882706 rows with na value for nrba
 
 # Set up MIL structure and select covariates
@@ -40,7 +40,7 @@ info_cols <- c("bag_label", "bag_name", "instance_name")
 
 d <- mildsvm::as_mild_df(bind_cols(
   d %>% select(all_of(info_cols)),
-  d %>% select(-all_of(info_cols)) %>% 
+  d %>% select(-all_of(info_cols)) %>%
     scale() %>% 
     as.data.frame()
 ))
