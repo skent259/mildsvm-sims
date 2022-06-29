@@ -26,9 +26,6 @@ ignore/
 # R Markdown and output
 *.html
 
-# Figures
-fig/
-
 # Tables
 create-tables.tex
 create-tables.pdf
