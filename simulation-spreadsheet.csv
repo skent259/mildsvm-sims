@@ -9,29 +9,27 @@ smm
 misvm (4 combinations of features, method = ""heuristic"")",
 2.0.0,"We compare MI-SVM (heuristic), SMM, and MI-SMM (heuristic) based on a principled approach of using all combinations of features for MI-SVM.  The 4 combinations use the rbf kernel and choices of univariate features (skew, kurtosis, 25th percentile, 75th percentile), multivariate features (2-way correlations), neither, or both.  Simulations were run in condor. ","See sim/dataset-parameters.R for details.  Key difference is in the covariance structure, with minor differences in two of the covariates.  
 
-nbag_test <- 500",".cost <- c(1, 10, 100)
-.sigma <- (1/n_cols) * 2 ^ c(-1, 0, 1)
-nfolds_gs = 5","mildsvm qp-heuristic
+nbag_test <- 500",Same as 1.0.0,"mildsvm qp-heuristic
 mildsvm mip
 smm
 misvm (4 combinations of features, method = ""heuristic"")",
 3.0.0,"We compare MI-SVM (heuristic), SMM, and MI-SMM (heuristic) based on a principled approach of using all combinations of features for MI-SVM.  The 4 combinations use the rbf kernel and choices of univariate features (skew, kurtosis, 25th percentile, 75th percentile), multivariate features (2-way correlations), neither, or both.  Simulations were run in condor. ","See sim/dataset-parameters.R for details.  Key difference is in the means, which 0.3 for 5 covariates in positive instances and 0 for 5 covariates in negative instances 
 
-nbag_test <- 500",".cost <- c(1, 10, 100)
-.sigma <- (1/n_cols) * 2 ^ c(-1, 0, 1)
-nfolds_gs = 5","mildsvm qp-heuristic
+nbag_test <- 500",Same as 1.0.0,"mildsvm qp-heuristic
 mildsvm mip
 smm
 misvm (4 combinations of features, method = ""heuristic"")",
 4.0.0,"We compare MI-SVM (heuristic), SMM, and MI-SMM (heuristic) based on a principled approach of using all combinations of features for MI-SVM.  The 4 combinations use the rbf kernel and choices of univariate features (skew, kurtosis, 25th percentile, 75th percentile), multivariate features (2-way correlations), neither, or both.  Simulations were run in condor. ","See sim/dataset-parameters.R for details.  Key difference is in the covariance structure, with major differences in 5 of the covariates
 
-nbag_test <- 500",".cost <- c(1, 10, 100)
-.sigma <- (1/n_cols) * 2 ^ c(-1, 0, 1)
-nfolds_gs = 5","mildsvm qp-heuristic
+nbag_test <- 500",Same as 1.0.0,"mildsvm qp-heuristic
 mildsvm mip
 smm
 misvm (4 combinations of features, method = ""heuristic"")",
 1.0.1,"Same as 1.0.0, except we add methods to compare MI-SVM with the QP-heuristic method, which uses a more precise formulation of the original Andrews et al. (2003) MI-SVM paper.",Same as 1.0.0,Same as 1.0.0,"misvm (4 combinations of features, method = ""qp-heuristic"")",
-2.0.1,"Same as 2.0.0, except we add methods to compare MI-SVM with the QP-heuristic method, which uses a more precise formulation of the original Andrews et al. (2003) MI-SVM paper.",Same as 2.0.0,Same as 2.0.0,"misvm (4 combinations of features, method = ""qp-heuristic"")",
-3.0.1,"Same as 3.0.0, except we add methods to compare MI-SVM with the QP-heuristic method, which uses a more precise formulation of the original Andrews et al. (2003) MI-SVM paper.",Same as 3.0.0,Same as 3.0.0,"misvm (4 combinations of features, method = ""qp-heuristic"")",
-4.0.1,"Same as 4.0.0, except we add methods to compare MI-SVM with the QP-heuristic method, which uses a more precise formulation of the original Andrews et al. (2003) MI-SVM paper.",Same as 4.0.0,Same as 4.0.0,"misvm (4 combinations of features, method = ""qp-heuristic"")",
+2.0.1,"Same as 2.0.0, except we add methods to compare MI-SVM with the QP-heuristic method, which uses a more precise formulation of the original Andrews et al. (2003) MI-SVM paper.",Same as 2.0.0,Same as 1.0.0,"misvm (4 combinations of features, method = ""qp-heuristic"")",
+3.0.1,"Same as 3.0.0, except we add methods to compare MI-SVM with the QP-heuristic method, which uses a more precise formulation of the original Andrews et al. (2003) MI-SVM paper.",Same as 3.0.0,Same as 1.0.0,"misvm (4 combinations of features, method = ""qp-heuristic"")",
+4.0.1,"Same as 4.0.0, except we add methods to compare MI-SVM with the QP-heuristic method, which uses a more precise formulation of the original Andrews et al. (2003) MI-SVM paper.",Same as 4.0.0,Same as 1.0.0,"misvm (4 combinations of features, method = ""qp-heuristic"")",
+5.0.0,"We compare MI-SVM (heuristic), SMM, and MI-SMM (qp-heuristic) based on a principled approach of using all combinations of features for MI-SVM.  The 4 combinations use the rbf kernel and choices of univariate features (skew, kurtosis, 25th percentile, 75th percentile), multivariate features (2-way correlations), neither, or both.  Simulations were run in condor. ",We use the motivating data set of collagen fiber features as the dataset ,Same as 1.0.0,"mildsvm qp-heuristic
+mildsvm mip
+smm
+misvm (4 combinations of features, method = ""qp-heuristic"")",
