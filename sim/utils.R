@@ -307,12 +307,14 @@ bag_level <- function(df, sample_level) {
 #' @param df A data.frame to train on.
 #' @param kernel A pre-computed kernel matrix that is the output of
 #'   `mildsvm::kme()` called on `df`.
+#' @param save A logical; if `TRUE`, will include fit and predictions in saved 
+#'   output; if `FALSE`, only metrics are saved. 
 #'   
 #' @return A data.frame with performance metrics such as 
 #' - `auc` The area under ROC based on the bag-level predictions
 #' - `time` The time taken for fitting and prediction
 #' - `mipgap` The reported gap from the MIP procedure in Gurobi, if applicable
-evaluate_model2 <- function(row, df, kernel, train, test, verbose = TRUE) {
+evaluate_model2 <- function(row, df, kernel, train, test, verbose = TRUE, save = FALSE) {
   if (verbose) {
     cat("Function:", row$fun, ", ", 
         "Method:", row$method, "\n")
@@ -354,7 +356,7 @@ evaluate_model2 <- function(row, df, kernel, train, test, verbose = TRUE) {
       
       fit <- switch(
         row$fun,
-        "mildsvm" = mildsvm(
+        "mildsvm" = mismm(
           train_df,
           cost = row$cost, 
           method = row$method,
@@ -395,7 +397,7 @@ evaluate_model2 <- function(row, df, kernel, train, test, verbose = TRUE) {
     y_true_bag <- classify_bags(y[test], bags[test])
     y_pred_bag <- classify_bags(pred$.pred, bags[test])
     
-    return(tibble(
+    out <- tibble(
       auc = as.double(pROC::auc(response = y_true_bag,
                                 predictor = y_pred_bag,
                                 levels = c(0,1), direction = "<")),
@@ -405,11 +407,22 @@ evaluate_model2 <- function(row, df, kernel, train, test, verbose = TRUE) {
       f1 = caret::F_meas(data = factor(1*(y_pred_bag > 0), levels = c(0, 1)),
                          reference = factor(y_true_bag, levels = c(0, 1))),
       time = benchmark$time / 1e9,
-      mipgap = ifelse(row$method == "mip", fit$gurobi_fit$mipgap, NA)
-    ))
+      mipgap = ifelse(row$method == "mip", fit$gurobi_fit$mipgap, NA),
+    )
+    if (save) {
+      out$fit = list(fit)
+      out$pred = list(pred)
+    }
+    
+    return(out)
   },
   error = function(e) {
     cat("ERROR :",conditionMessage(e), "\n")
-    return(tibble(auc = NA, auc_inst = NA, f1 = NA, time = NA, mipgap = NA))
+    if (save) {
+      return(tibble(auc = NA, auc_inst = NA, f1 = NA, time = NA, mipgap = NA, fit = NA, pred = NA))
+    } else {
+      return(tibble(auc = NA, auc_inst = NA, f1 = NA, time = NA, mipgap = NA))
+    }
+    
   })
 }
