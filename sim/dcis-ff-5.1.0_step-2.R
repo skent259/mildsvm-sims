@@ -44,7 +44,7 @@ output_fname <- glue("sim-{sim}-{step}-results_i={str_pad(i, 4, pad = 0)}.rds")
 output_fname <- here(output_dir, output_fname)
 step1_fname <- glue("mildsvm-sims-results-{sim}-1.rds")
 step1_fname <- here(output_dir, step1_fname)
-cv_fname <- here(output_dir, "gridsearch_spec_5.0.0.rds")
+cv_fname <- here(output_dir, "gridsearch_spec_5.1.0.rds")
 
 ## Data set -------------------------------------------------------------------#
 
@@ -87,6 +87,12 @@ eval_spec <-
   mutate(across(time, list(sum = ~sum(.x, na.rm = TRUE)))) %>% 
   slice_max(order_by = mean_metric, n = 1, with_ties = FALSE) %>% 
   ungroup()
+
+eval_spec <- eval_spec %>% 
+  mutate(control = modify(control, function(.x) {
+    .x$verbose <- TRUE
+    return(.x)
+  }))
 
 eval_spec <- eval_spec %>% select(-auc, -auc_inst, -f1, -time, -mipgap, -sigma)
 eval_spec_this_batch <- slice(eval_spec, batch_index(i, batch_size)) %>%

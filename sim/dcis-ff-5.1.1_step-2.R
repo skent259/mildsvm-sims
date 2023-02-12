@@ -1,5 +1,5 @@
 ##-----------------------------------------------------------------------------#
-#' Simulation 5.0.0 - fiber features
+#' Simulation 5.1.1 - fiber features
 #'   Step 2 - Test set evaluation on optimal parameters
 #' 
 #' See simulation-spreadsheet.xlsx for details 
@@ -38,13 +38,13 @@ data_dir <- set_default(data_dir, "data/processed")
 # 1 runs at `batch_size` = 1, for 500 total
 
 ## Output file ----------------------------------------------------------------#
-sim <- "5.0.0"
+sim <- "5.1.1"
 step <- "2"
 output_fname <- glue("sim-{sim}-{step}-results_i={str_pad(i, 4, pad = 0)}.rds")
 output_fname <- here(output_dir, output_fname)
-step1_fname <- glue("mildsvm-sims-results-{sim}-1.rds")
+step1_fname <- glue("mildsvm-sims-results-5.1.0-1.rds") # NOTE: pull step 1 from 5.1.0
 step1_fname <- here(output_dir, step1_fname)
-cv_fname <- here(output_dir, "gridsearch_spec_5.0.0.rds")
+cv_fname <- here(output_dir, "gridsearch_spec_5.1.0.rds")
 
 ## Data set -------------------------------------------------------------------#
 
@@ -88,6 +88,13 @@ eval_spec <-
   slice_max(order_by = mean_metric, n = 1, with_ties = FALSE) %>% 
   ungroup()
 
+eval_spec <- eval_spec %>% 
+  mutate(control = modify(control, function(.x) {
+    .x$verbose <- TRUE
+    .x$time_limit <- 18000 # Run for 5 hour max
+    return(.x)
+  }))
+
 eval_spec <- eval_spec %>% select(-auc, -auc_inst, -f1, -time, -mipgap, -sigma)
 eval_spec_this_batch <- slice(eval_spec, batch_index(i, batch_size)) %>%
   left_join(cv_spec, by = c("rep", "fold", "gs_fold"))
@@ -104,7 +111,8 @@ out <- eval_spec_this_batch %>%
     df = df, 
     kernel = get_kernel(.x$control$sigma, .x$fun),
     train = c(.x$train, .x$val), 
-    test = .x$test
+    test = .x$test,
+    save = TRUE
   )) %>% 
   bind_cols(eval_spec_this_batch)
 
