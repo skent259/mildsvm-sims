@@ -207,7 +207,7 @@ evaluate_model <- function(row, train_name, test_name, train = TRUE, test = TRUE
       
       fit <- switch(
         row$fun,
-        "mildsvm" = mildsvm(
+        "mildsvm" = mismm(
           train_df,
           cost = row$cost, 
           method = row$method,
