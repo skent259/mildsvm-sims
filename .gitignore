@@ -47,6 +47,7 @@ eval_spec_*.rds
 !mildsvm-sims-results*.1.0-1.rds
 !mildsvm-sims-results*.1.0-2.rds
 !mildsvm-sims-results*.1.1-2.rds
+mildsvm-sims-gurobi-logs*.xlsx
 *.json
 
 # Data
@@ -54,3 +55,5 @@ eval_spec_*.rds
 debug/
 
 .vscode/
+
+*.pdf

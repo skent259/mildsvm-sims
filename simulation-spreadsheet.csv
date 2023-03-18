@@ -33,3 +33,25 @@ misvm (4 combinations of features, method = ""heuristic"")",
 mildsvm mip
 smm
 misvm (4 combinations of features, method = ""qp-heuristic"")",
+1.0.3,Same as 1.0.0 and 1.0.1 except we re-run on the released mildsvm package v0.4.0,Same as 1.0.0,Same as 1.0.0,"mildsvm qp-heuristic
+mildsvm mip
+smm
+misvm (4 combinations of features, method = ""qp-heuristic"")",
+2.0.3,Same as 2.0.0 and 2.0.1 except we re-run on the released mildsvm package v0.4.0,Same as 2.0.0,Same as 1.0.0,"mildsvm qp-heuristic
+mildsvm mip
+smm
+misvm (4 combinations of features, method = ""qp-heuristic"")",
+3.0.3,Same as 3.0.0 and 3.0.1 except we re-run on the released mildsvm package v0.4.0,Same as 3.0.0,Same as 1.0.0,"mildsvm qp-heuristic
+mildsvm mip
+smm
+misvm (4 combinations of features, method = ""qp-heuristic"")",
+4.0.3,Same as 4.0.0 and 4.0.1 except we re-run on the released mildsvm package v0.4.0,Same as 4.0.0,Same as 1.0.0,"mildsvm qp-heuristic
+mildsvm mip
+smm
+misvm (4 combinations of features, method = ""qp-heuristic"")",
+5.1.0,"Same as 5.0.0, except models are re-run on the released mildsvm package v0.4.0, and models are saved in step 2 for further analysis",We use the motivating data set of collagen fiber features as the dataset ,Same as 1.0.0,"mildsvm qp-heuristic
+mildsvm mip
+",
+5.1.1,"Same as 5.1.0, except step 2 is run for 5 hours max to examine the convergence properties of mildsvm mip",Same as 5.0.0,Same as 1.0.0,"mildsvm qp-heuristic
+mildsvm mip
+",
