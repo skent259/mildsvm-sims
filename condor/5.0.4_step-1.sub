@@ -1,0 +1,28 @@
+# Condor submission file for R.
+
+Universe    =   vanilla
+Executable  =   /s/bin/R
+initialdir  =   /ua/spkent/multiple-instance-learning/simulations/mildsvm-sims
+input		=   sim/dcis-ff-5.0.4_step-1.R
+arguments	=   --vanilla --args $(Process) 1 /z/Comp/spkent/simulation/mildsvm-sims/5.0 /z/Comp/spkent/simulation/mildsvm-sims/data/processed
+environment =   "GUROBI_HOME=/s/pkg/linux64/gurobi/gurobi910/linux64 LD_LIBRARY_PATH=/s/pkg/linux64/gurobi/gurobi910/linux64/lib GRB_LICENSE_FILE=/s/pkg/linux64/gurobi/gurobi.lic" 
+
+request_cpus = 1
+request_memory = 8GB
+
+# only run 1000/3 = 333 jobs at once 
+concurrency_limits = spkent:3
+
+# -----
+# Send the job to Held state on failure.
+on_exit_hold = (ExitBySignal == True) || (ExitCode != 0)
+ 
+# Periodically retry the jobs every 10 minutes, up to a maximum of 10 retries.
+periodic_release = (NumJobStarts < 20) && ((CurrentTime - EnteredCurrentStatus) > 100)
+# -----
+
+output		=	condor/5.0/out/$(Process).out
+error       =   condor/5.0/err/$(Process).err
+log         =   condor/5.0/log/$(Process).log
+
+Queue 100

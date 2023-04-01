@@ -320,8 +320,6 @@ evaluate_model2 <- function(row, df, kernel, train, test, verbose = TRUE, save =
         "Method:", row$method, "\n")
   }
   
-  # browser() 
-  
   train_df <- df[train, , drop = FALSE]
   test_df <- df[test, , drop = FALSE]
   
@@ -342,16 +340,20 @@ evaluate_model2 <- function(row, df, kernel, train, test, verbose = TRUE, save =
   train_kernel <- kernel[train_inst, train_inst]
   test_kernel <- kernel[test_inst, train_inst]
   
-  
   tryCatch({
     benchmark <- microbenchmark({
       
       if (
-        row$fun == "smm" | 
-        (row$fun == "mildsvm" & row$method %in% c("heuristic", "qp-heuristic")) | 
+        row$fun == "smm" || 
+        (row$fun == "mildsvm" && row$method %in% c("heuristic", "qp-heuristic")) || 
         (row$fun == "smm_bag")
       ) {
         row$control$kernel <- train_kernel  
+      }
+      
+      if (row$fun == "milr") {
+        train_df <- summarize_samples(train_df, .fns = row$.fns, cor = row$cor)
+        test_df <- summarize_samples(test_df, .fns = row$.fns, cor = row$cor)
       }
       
       fit <- switch(
@@ -381,6 +383,15 @@ evaluate_model2 <- function(row, df, kernel, train, test, verbose = TRUE, save =
           instances = "bag_name", 
           cost = row$cost,
           control = row$control
+        ),
+        "milr" = milr::milr(
+          y = train_df$bag_label,
+          x = train_df[, 4:ncol(train_df)],
+          bag = train_df$bag_name,
+          lambda = row$lambda,
+          lambdaCriterion = row$lambdaCriterion,
+          nfold = row$nfold,
+          maxit = row$maxit
         )
       )
       
@@ -389,21 +400,29 @@ evaluate_model2 <- function(row, df, kernel, train, test, verbose = TRUE, save =
         "mildsvm" = predict(fit, new_data = test_df, type = "raw", kernel = test_kernel),
         "smm" = predict(fit, new_data = test_df, type = "raw", kernel = test_kernel),
         "misvm" = predict(fit, new_data = test_df, type = "raw"),
-        "smm_bag" = predict(fit, new_data = test_df, type = "raw", kernel = test_kernel)
+        "smm_bag" = predict(fit, new_data = test_df, type = "raw", kernel = test_kernel),
+        "milr" = predict(fit, newdata = as.matrix(test_df[, 4:ncol(test_df)]), 
+                         bag_newdata = as.numeric(as.factor(test_df$bag_name)))
       )
-      
+
     }, times = 1)
     
     y_true_bag <- classify_bags(y[test], bags[test])
-    y_pred_bag <- classify_bags(pred$.pred, bags[test])
-    
+    if (row$fun != "milr") {
+      y_pred_bag <- classify_bags(pred$.pred, bags[test])
+    } else {
+      y_pred_bag <- pred
+    }
+
     out <- tibble(
       auc = as.double(pROC::auc(response = y_true_bag,
                                 predictor = y_pred_bag,
                                 levels = c(0,1), direction = "<")),
-      auc_inst = as.double(pROC::auc(response = y[test],
-                                     predictor = pred$.pred,
-                                     levels = c(0,1), direction = "<")),
+      auc_inst = ifelse(row$fun == "milr",
+                        NA, 
+                        as.double(pROC::auc(response = y[test],
+                                            predictor = pred$.pred,
+                                            levels = c(0,1), direction = "<"))),
       f1 = caret::F_meas(data = factor(1*(y_pred_bag > 0), levels = c(0, 1)),
                          reference = factor(y_true_bag, levels = c(0, 1))),
       time = benchmark$time / 1e9,
