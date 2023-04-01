@@ -46,3 +46,10 @@ do
 done 
 
 Rscript output/combine_files.R output/5.0 5.0.0 2
+
+for ((i=0; i<100; i++)) 
+do 
+    python sim/dcis-ff-5.0.3_step-1.py $i 1 output/5.0/ data/processed/
+done
+
+Rscript sim/dcis-ff-5.0.3_step-2.R --args output/5.0
