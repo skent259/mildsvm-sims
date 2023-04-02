@@ -36,7 +36,7 @@ i <- set_default(i, 1)
 batch_size <- set_default(batch_size, 1)
 output_dir <- set_default(output_dir, "output/5.0")
 data_dir <- set_default(data_dir, "data/processed")
-# 100 runs at `batch_size` = 1, for 100 total
+# 400 runs at `batch_size` = 1, for 400 total
 
 ## Output file ----------------------------------------------------------------#
 sim <- "5.0.4"
@@ -74,6 +74,7 @@ univariate_fns <- list(
   qtl75 = ~quantile(.x, 0.75)
 )
 .fns <- list(
+  "baseline" = default_fns, 
   "univariate" = c(default_fns, univariate_fns)
 )
 
@@ -87,7 +88,7 @@ model_param <-
                 nfold = 10, 
                 maxit = 500,
                 .fns = .fns,
-                cor = TRUE)
+                cor = c(TRUE, FALSE))
   )
 
 

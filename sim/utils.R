@@ -395,23 +395,32 @@ evaluate_model2 <- function(row, df, kernel, train, test, verbose = TRUE, save =
         )
       )
       
+      #' Custom prediction function for milr
+      #' 
+      #' [milr:::predict.milr] doesn't support raw predictions, but this is easy
+      #' to do using their logic. 
+      predict_milr <- function(object, new_data, type = "raw") {
+        raw <- milr:::logit(cbind(1, new_data), coef(object))
+        
+        return(tibble::tibble(.pred = raw[, 1]))
+      }
+      
       pred <- switch(
         row$fun, 
         "mildsvm" = predict(fit, new_data = test_df, type = "raw", kernel = test_kernel),
         "smm" = predict(fit, new_data = test_df, type = "raw", kernel = test_kernel),
         "misvm" = predict(fit, new_data = test_df, type = "raw"),
         "smm_bag" = predict(fit, new_data = test_df, type = "raw", kernel = test_kernel),
-        "milr" = predict(fit, newdata = as.matrix(test_df[, 4:ncol(test_df)]), 
-                         bag_newdata = as.numeric(as.factor(test_df$bag_name)))
+        "milr" = predict_milr(fit, new_data = as.matrix(test_df[, 4:ncol(test_df)]), type = "raw")
       )
 
     }, times = 1)
     
     y_true_bag <- classify_bags(y[test], bags[test])
-    if (row$fun != "milr") {
-      y_pred_bag <- classify_bags(pred$.pred, bags[test])
+    if (row$fun == "milr") {
+      y_pred_bag <- classify_bags(pred$.pred, test_df$bag_name)
     } else {
-      y_pred_bag <- pred
+      y_pred_bag <- classify_bags(pred$.pred, bags[test])
     }
 
     out <- tibble(

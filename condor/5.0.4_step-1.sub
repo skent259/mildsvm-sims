@@ -21,8 +21,8 @@ on_exit_hold = (ExitBySignal == True) || (ExitCode != 0)
 periodic_release = (NumJobStarts < 20) && ((CurrentTime - EnteredCurrentStatus) > 100)
 # -----
 
-output		=	condor/5.0/out/$(Process).out
-error       =   condor/5.0/err/$(Process).err
-log         =   condor/5.0/log/$(Process).log
+output		=	condor/5.0.0/out/$(Process).out
+error       =   condor/5.0.0/err/$(Process).err
+log         =   condor/5.0.0/log/$(Process).log
 
-Queue 100
+Queue 400
