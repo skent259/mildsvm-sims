@@ -56,6 +56,35 @@ create_results_plot <- function(data, methods, facets = ninst + nsample ~ nbag,
          y = NULL)
 }
 
+#' Plot x vs Method with facets
+#' 
+#' Slightly more general version of `create_results_plot()`
+create_results_plot2 <- function(data, x, methods, facets = ninst + nsample ~ nbag,
+                                 alpha = 0.5) {
+  data %>% 
+    ggplot(aes(x = {{ x }} , y = method_name, color = method_name)) +
+    ggbeeswarm::geom_quasirandom(
+      aes(color = method_name, group = method_name),
+      groupOnX = FALSE, 
+      alpha = alpha
+    ) +
+    geom_errorbarh(stat = "summary",
+                   fun.min = mean, fun.max = mean, 
+                   color = "grey10") + 
+    facet_grid(facets, 
+               labeller = label_both) + 
+    scale_y_discrete(limits = methods$method,
+                     labels = methods$short_name) +
+    scale_color_manual(limits = methods$method,
+                       labels = methods$short_name,
+                       values = methods$color) +
+    theme_minimal() +
+    theme(legend.position = "none") +
+    labs(title = "Comparing replications of CV procedure across methods", 
+         y = NULL)
+}
+
+
 #' Plot critical differences
 #' 
 #' @param rank_df A data.frame with two columns `method_name`, which gives the
