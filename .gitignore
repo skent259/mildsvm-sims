@@ -36,10 +36,18 @@ create-tables.pdf
 *.out
 log-time_*
 error-*
+gurobi-*
 
 # Output 
+data-param_*.rds
+gridsearch_spec_*.rds
+eval_spec_*.rds
 !mildsvm-sims-results*.0.0-1.rds
 !mildsvm-sims-results*.0.0-2.rds
+!mildsvm-sims-results*.1.0-1.rds
+!mildsvm-sims-results*.1.0-2.rds
+!mildsvm-sims-results*.1.1-2.rds
+mildsvm-sims-gurobi-logs*.xlsx
 *.json
 
 # Data
@@ -47,3 +55,5 @@ error-*
 debug/
 
 .vscode/
+
+*.pdf

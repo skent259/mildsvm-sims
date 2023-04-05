@@ -247,3 +247,82 @@ for (s in unique(str_sub(sims, 1, 3))) {
   ggsave(here(fig_dir, fname), p, width = 8, height = 4)
 }
 
+## Appendix - Training time results figure for each sim -----------------------#
+
+for (s in unique(str_sub(sims, 1, 3))) {
+  
+  p <- 
+    results_mod %>% 
+    filter(str_sub(sim, 1, 3) == s) %>% 
+    mutate(time_hr = time / 60 / 60) %>% 
+    rename(`N group` = nbag,
+           `N instance` = ninst,
+           `N sample` = nsample) %>% 
+    create_results_plot2(
+      x = time_hr, 
+      methods = methods_to_show,
+      facets = `N group` ~ `N instance` + `N sample`
+    ) + 
+    labs(title = NULL, x = "Time (hr)")
+  
+  print(p)
+  fname <- glue("mildsvm-sims-appendix_time-plot_revision_{s}.pdf")
+  ggsave(here(fig_dir, fname), p, width = 8, height = 5)
+}
+
+# # For claim about range of run times
+# results_mod %>% 
+#   group_by(method_name, sim, nbag, ninst, nsample) %>% 
+#   summarize(mean_time = mean(time / 60),
+#             .groups = "drop") %>% 
+#   filter(nbag == 250, ninst == 6, nsample == 50) %>% 
+#   group_by(method_name) %>% 
+#   summarize(range(mean_time)) %>% 
+#   print(n = Inf)
+#   
+
+
+##-----------------------------------------------------------------------------#
+## Figures from dcis-ff --------------------------------------------------------
+##-----------------------------------------------------------------------------#
+
+sims <- c("5.0.0")
+steps <- c(2)
+res_dir <- "output"
+
+results <- 
+  map2(sims, steps, ~read_results(.x, res_dir, step = .y)) %>% 
+  bind_rows()
+
+results_mod <- results %>% 
+  hoist(control, "kernel") %>% 
+  mutate(method_name = glue("{str_to_upper(fun)} (",
+                            "{ifelse(is.na(method), '', glue('{method}'))}",
+                            "{ifelse(fun == 'misvm', glue(' {kernel} '), '')}", 
+                            "{ifelse(fun == 'misvm', names(.fns), '')}",
+                            "{ifelse(fun == 'misvm', ifelse(cor, ' cor', ''), '')})"),
+         sim = str_sub(sim, 1, 3)) %>% 
+  select(method_name, sim, everything())
+
+results_mod <-
+  results_mod %>% 
+  group_by(method_name, fun, method, kernel, .fns, cor, rep) %>% 
+  summarize(auc = mean(auc), 
+            time = sum(time) + sum(sum_time),
+            .groups = "drop_last")
+
+## Appendix - Training time results figure for each sim -----------------------#
+
+p <- results_mod %>% 
+  mutate(time_hr = time / 60 / 60) %>% 
+  create_results_plot2(
+    x = time_hr, 
+    methods = methods_to_show,
+    facets = NULL
+  ) + 
+  scale_x_continuous(labels = scales::number_format(big.mark = ",")) + 
+  labs(title = NULL, x = "Time (hr)")
+
+print(p)
+fname <- glue("dcis-ff-appendix_time-plot_revision.pdf")
+ggsave(here(fig_dir, fname), p, width = 8, height = 4)

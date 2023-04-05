@@ -207,7 +207,7 @@ evaluate_model <- function(row, train_name, test_name, train = TRUE, test = TRUE
       
       fit <- switch(
         row$fun,
-        "mildsvm" = mildsvm(
+        "mildsvm" = mismm(
           train_df,
           cost = row$cost, 
           method = row$method,
@@ -307,18 +307,18 @@ bag_level <- function(df, sample_level) {
 #' @param df A data.frame to train on.
 #' @param kernel A pre-computed kernel matrix that is the output of
 #'   `mildsvm::kme()` called on `df`.
+#' @param save A logical; if `TRUE`, will include fit and predictions in saved 
+#'   output; if `FALSE`, only metrics are saved. 
 #'   
 #' @return A data.frame with performance metrics such as 
 #' - `auc` The area under ROC based on the bag-level predictions
 #' - `time` The time taken for fitting and prediction
 #' - `mipgap` The reported gap from the MIP procedure in Gurobi, if applicable
-evaluate_model2 <- function(row, df, kernel, train, test, verbose = TRUE) {
+evaluate_model2 <- function(row, df, kernel, train, test, verbose = TRUE, save = FALSE) {
   if (verbose) {
     cat("Function:", row$fun, ", ", 
         "Method:", row$method, "\n")
   }
-  
-  # browser() 
   
   train_df <- df[train, , drop = FALSE]
   test_df <- df[test, , drop = FALSE]
@@ -340,21 +340,25 @@ evaluate_model2 <- function(row, df, kernel, train, test, verbose = TRUE) {
   train_kernel <- kernel[train_inst, train_inst]
   test_kernel <- kernel[test_inst, train_inst]
   
-  
   tryCatch({
     benchmark <- microbenchmark({
       
       if (
-        row$fun == "smm" | 
-        (row$fun == "mildsvm" & row$method %in% c("heuristic", "qp-heuristic")) | 
+        row$fun == "smm" || 
+        (row$fun == "mildsvm" && row$method %in% c("heuristic", "qp-heuristic")) || 
         (row$fun == "smm_bag")
       ) {
         row$control$kernel <- train_kernel  
       }
       
+      if (row$fun == "milr") {
+        train_df <- summarize_samples(train_df, .fns = row$.fns, cor = row$cor)
+        test_df <- summarize_samples(test_df, .fns = row$.fns, cor = row$cor)
+      }
+      
       fit <- switch(
         row$fun,
-        "mildsvm" = mildsvm(
+        "mildsvm" = mismm(
           train_df,
           cost = row$cost, 
           method = row$method,
@@ -379,37 +383,74 @@ evaluate_model2 <- function(row, df, kernel, train, test, verbose = TRUE) {
           instances = "bag_name", 
           cost = row$cost,
           control = row$control
+        ),
+        "milr" = milr::milr(
+          y = train_df$bag_label,
+          x = train_df[, 4:ncol(train_df)],
+          bag = train_df$bag_name,
+          lambda = row$lambda,
+          lambdaCriterion = row$lambdaCriterion,
+          nfold = row$nfold,
+          maxit = row$maxit
         )
       )
+      
+      #' Custom prediction function for milr
+      #' 
+      #' [milr:::predict.milr] doesn't support raw predictions, but this is easy
+      #' to do using their logic. 
+      predict_milr <- function(object, new_data, type = "raw") {
+        raw <- milr:::logit(cbind(1, new_data), coef(object))
+        
+        return(tibble::tibble(.pred = raw[, 1]))
+      }
       
       pred <- switch(
         row$fun, 
         "mildsvm" = predict(fit, new_data = test_df, type = "raw", kernel = test_kernel),
         "smm" = predict(fit, new_data = test_df, type = "raw", kernel = test_kernel),
         "misvm" = predict(fit, new_data = test_df, type = "raw"),
-        "smm_bag" = predict(fit, new_data = test_df, type = "raw", kernel = test_kernel)
+        "smm_bag" = predict(fit, new_data = test_df, type = "raw", kernel = test_kernel),
+        "milr" = predict_milr(fit, new_data = as.matrix(test_df[, 4:ncol(test_df)]), type = "raw")
       )
-      
+
     }, times = 1)
     
     y_true_bag <- classify_bags(y[test], bags[test])
-    y_pred_bag <- classify_bags(pred$.pred, bags[test])
-    
-    return(tibble(
+    if (row$fun == "milr") {
+      y_pred_bag <- classify_bags(pred$.pred, test_df$bag_name)
+    } else {
+      y_pred_bag <- classify_bags(pred$.pred, bags[test])
+    }
+
+    out <- tibble(
       auc = as.double(pROC::auc(response = y_true_bag,
                                 predictor = y_pred_bag,
                                 levels = c(0,1), direction = "<")),
-      auc_inst = as.double(pROC::auc(response = y[test],
-                                     predictor = pred$.pred,
-                                     levels = c(0,1), direction = "<")),
+      auc_inst = ifelse(row$fun == "milr",
+                        NA, 
+                        as.double(pROC::auc(response = y[test],
+                                            predictor = pred$.pred,
+                                            levels = c(0,1), direction = "<"))),
       f1 = caret::F_meas(data = factor(1*(y_pred_bag > 0), levels = c(0, 1)),
                          reference = factor(y_true_bag, levels = c(0, 1))),
       time = benchmark$time / 1e9,
-      mipgap = ifelse(row$method == "mip", fit$gurobi_fit$mipgap, NA)
-    ))
+      mipgap = ifelse(row$method == "mip", fit$gurobi_fit$mipgap, NA),
+    )
+    if (save) {
+      out$fit = list(fit)
+      out$pred = list(pred)
+    }
+    
+    return(out)
   },
   error = function(e) {
     cat("ERROR :",conditionMessage(e), "\n")
-    return(tibble(auc = NA, auc_inst = NA, f1 = NA, time = NA, mipgap = NA))
+    if (save) {
+      return(tibble(auc = NA, auc_inst = NA, f1 = NA, time = NA, mipgap = NA, fit = NA, pred = NA))
+    } else {
+      return(tibble(auc = NA, auc_inst = NA, f1 = NA, time = NA, mipgap = NA))
+    }
+    
   })
 }

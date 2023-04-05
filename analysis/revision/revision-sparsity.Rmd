@@ -1,0 +1,346 @@
+---
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+    echo = FALSE,
+    cache = FALSE,
+    warning = FALSE,
+    message = FALSE,
+    fig.align = "center"
+)
+
+library(tidyverse)
+library(here)
+library(glue)
+library(scales)
+library(knitr)
+library(kableExtra)
+library(mildsvm)
+source(here("analysis/utils.R"))
+source(here("sim/utils.R"))
+
+# Tables
+kable_standard <- function(...) {
+    kable(booktabs = TRUE, linesep = "", ...) %>% 
+        kable_styling(full_width = FALSE)
+}
+
+res_dir <- "output"
+fig_dir <- "fig"
+data_dir <- "data/processed"
+
+options(knitr.kable.NA = "—")
+
+theme_set(theme_bw())
+```
+
+
+```{r}
+# Read in data
+results <- readRDS(here(res_dir, "5.0", "mildsvm-sims-results-5.1.0-2.rds")) 
+
+```
+
+## Sparsity for MI-SMM (heuristic)
+
+Use 5.1.0, look for sparsity in $\alpha$
+
+Note that $\alpha$ should be positive, and less than $C$. The values for $C$ used in this simulation were 1, 10, and 100, depending on the cross validation option selected. In this case, $C = 100$ was always selected. 
+
+Interesting metrics:
+
+- Percent of alpha that are 0
+  - Correctly classified, not on margin
+- Percent of alpha that reach the maximal value (depends on Y, because of weighting)
+  - This corresponds to points misclassified in the fit (on wrong side of margin)
+- Percent in neither category above, the points lying on the margin exactly
+
+
+```{r}
+
+eps <- 1e-8
+
+alpha_stats <- 
+  results %>% 
+  filter(method == "qp-heuristic") %>% 
+  rowwise() %>% 
+  summarize(
+    rep = rep, 
+    alpha = list(abs(fit$gurobi_fit$ay)),
+    c_pos = fit$cost, 
+    c_neg = fit$cost * fit$weights[1], 
+    pct_zero = mean(alpha < eps),
+    # pct_100 = mean(alpha > 100 - eps & alpha < 100 + eps),
+    pct_top = mean(between(alpha, c_pos-eps, c_pos+eps) | between(alpha, c_neg-eps, c_neg+eps)), 
+    pct_rem = 1 - pct_zero - pct_top, 
+    auc = auc,
+  )
+
+```
+
+```{r}
+alpha_stats %>% 
+  unnest_longer(alpha) %>% 
+  ggplot(aes(x = alpha)) + 
+  geom_histogram() + 
+  facet_wrap(~rep, labeller = "label_both", nrow = 2) 
+```
+
+We observe that most of the alpha are 0, but there are spikes at 100 and near 50. The spikes correspond to the two max cost parameters, which are weighted to balance the contribution of positive and negative instances. 
+
+No observed relationship between AUC and sparsity, although we probably can't detect this anyways. 
+
+
+```{r}
+alpha_stats %>% 
+  select(rep, pct_zero, pct_top, pct_rem) %>% 
+  mutate(
+    across(starts_with("pct"), ~scales::percent(.x, 0.1))
+  ) %>% 
+  kable_standard(
+    align = "lrrr", 
+    col.names = c("Replication", "Percent 0", "Percent 100", "Percent remaining")
+  )
+  
+```
+
+```{r}
+sparity_range <- scales::percent(range(alpha_stats$pct_zero))
+sparity_range <- paste0(sparity_range, collapse = " and ")
+
+top_range <- scales::percent(range(alpha_stats$pct_top))
+top_range <- paste0(top_range, collapse = " and ")
+
+sv_range <- scales::percent(range(alpha_stats$pct_rem))
+sv_range <- paste0(sv_range, collapse = " and ")
+```
+
+We see between `r sparity_range` sparsity from the 10 replications. Between `r top_range` of the $\alpha$ are equal to the cost parameter. The remaining (point lying on the margin) are between `r sv_range`.
+
+
+```{r}
+alpha_stats %>% 
+  summarize(across(starts_with("pct"), mean)) %>% 
+  kable_standard(digits = 3)
+```
+
+
+
+## Sparsity for MI-SMM (MIQP)
+
+Use 5.1.0, look for sparsity in $w$
+
+
+Want to look for the scaled importance of each feature. However, the features correspond to the nystrom feature map approximating the radial basis function... so not sure what the ultimate interpretation would yield
+
+
+```{r}
+
+eps <- 1e-8
+
+w_stats <- 
+  results %>% 
+  filter(method == "mip") %>% 
+  rowwise() %>% 
+  summarize(
+    rep = rep, 
+    w = list(abs(fit$gurobi_fit$w)),
+    auc = auc,
+  )
+
+```
+
+```{r}
+w_stats %>% 
+  unnest_longer(w) %>% 
+  ggplot(aes(x = w)) + 
+  geom_histogram() + 
+  facet_wrap(~rep, labeller = "label_both", nrow = 2) 
+```
+
+See that there is a left skewed distribution, but no major trends are observed. Probably not worth reporting in the paper. 
+
+
+## Instance importance in bag
+
+Look at the instance (spot) predictions for each bag (slide). Using a prediction cutoff optimized with the Youden metric on the ROC curve, how many spots are classified as positive? These results are split by positive (tumor) and negative (non-tumor) slides, as we expect differences between them. 
+
+
+```{r}
+# load raw data
+df <- readRDS(here(data_dir, "mild-dcis-ff.rds")) 
+y <- df[["bag_label"]]
+bags <- df[["bag_name"]]
+x <- df[, 4:23]
+
+kernel_files <- list.files(here(data_dir), pattern = "dcis-ff-kernel-full_")
+kernels <- set_names(kernel_files) %>% map(~readRDS(here(data_dir, .x)))
+
+get_kernel <- function(sigma_) {
+  sigma_ <- as.character(sigma_)
+  nm <- glue::glue("dcis-ff-kernel-full_sigma=({sigma_}).rds")
+  kernels[[nm]]
+}
+
+
+```
+
+
+```{r}
+
+# Unfortunately, the saved predictions are all at the bag level.
+# Instead of re-running, we calculate the inst-level predictions here...
+
+f_stats <-
+  results %>% 
+  rowwise() %>% 
+  mutate(
+    train_inst = list(inst_level(df, c(train, val))), 
+    pred_all = list(
+      predict(fit, new_data = df, 
+              type = "raw", layer = "instance", 
+              kernel = get_kernel(control$sigma)[, train_inst])
+    ), 
+    pred_all = list(pred_all$.pred), 
+    inst_pred = list(mildsvm::classify_bags(pred_all, df$instance_name)),
+  ) %>% 
+  select(-fit, -pred, -train, -test, -val)
+
+
+```
+
+
+Final planned output for paper:
+- Figure, plot of percent positive histogram, for 1 replication each of  heuristic, mip (maybe choose median)
+- Report numbers across all replications to describe this phenomenon
+
+From the current results, it looks like only 25 to 30\% of spots are predicted positive at the end of the day, but this is not true of all slides. 
+
+
+```{r}
+bags_inst_level <- mildsvm::classify_bags(df$bag_name, df$instance_name)
+y_inst_level <- mildsvm::classify_bags(df$bag_label, df$instance_name)
+
+f_stats <- f_stats %>% 
+  mutate(
+    tmp = list(tibble(
+      bags = bags_inst_level,
+      pred = inst_pred,
+      y = y_inst_level
+    )),
+    cp = cutpointr::cutpointr(
+      mildsvm::classify_bags(tmp$pred, tmp$bags), 
+      mildsvm::classify_bags(tmp$y, tmp$bags), 
+      pos_class = 1, direction = ">="
+    )$optimal_cutpoint,
+    fp = list(
+      tmp %>% 
+        group_by(bags, y) %>% 
+        summarize(
+          frac_pos = mean(pred > cp)
+        ) 
+    ),
+    fp_mean_pos = mean(fp$frac_pos[which(fp$y == 1)]),
+    fp_mean_neg = mean(fp$frac_pos[which(fp$y == 0)]),
+    fp_sd_pos = sd(fp$frac_pos[which(fp$y == 1)]),
+    fp_sd_neg = sd(fp$frac_pos[which(fp$y == 0)]),
+    fp_range_pos = paste0(range(fp$frac_pos[which(fp$y == 1)]), collapse = ", "),
+    fp_range_neg = paste0(range(fp$frac_pos[which(fp$y == 0)]), collapse = ", "),
+    fp_100_pos = mean(fp$frac_pos[which(fp$y == 1)] == 1.00),
+    fp_100_neg = mean(fp$frac_pos[which(fp$y == 0)] == 1.00),
+  ) %>% 
+  select(-tmp)
+```
+
+```{r}
+f_stats %>% 
+  select(method, rep, ends_with("_pos"), ends_with("_neg")) %>% 
+  mutate(
+    across(where(is.double), ~scales::percent(.x, 0.1)),
+    across(contains("range"), ~str_sub(.x, end = 7))
+  ) %>% 
+  arrange(method, rep) %>% 
+  kable_standard(
+    caption = "Percentage of spots labelled positively (summary statistics)",
+    align = "lrrrrrrrrrr",
+    col.names = c("Method", "Rep", rep(c("Mean", "SD", "Range", "Pct 100"), 2))
+  ) %>% 
+  add_header_above(c(" " = 2, "Positive slides" = 4, "Negative slides" = 4))
+```
+
+Metrics that summarize the above table are given below. 
+
+```{r}
+f_stats %>% 
+  group_by(method) %>% 
+  summarize(
+    across(contains("fp_mean"), list("mean" = mean, "range" = ~paste0(range(round(.x, 3)), collapse = ", ")))
+  ) %>% 
+  kable_standard(
+    caption = "Percentage of spots labeled positively, averaged over replications", 
+    col.names = c("Method", rep(c("Mean of Means", "Range of Means"), 2)), 
+    digits = 3
+  ) %>% 
+  add_header_above(c(" " = 1, "Positive slides" = 2, "Negative slides" = 2))
+```
+
+
+```{r}
+p <- f_stats %>% 
+  filter(rep == 7) %>% 
+  select(method, rep, fp) %>% 
+  unnest_longer(fp) %>% 
+  unpack(fp) %>% 
+  ggplot(aes(frac_pos, fill = as.factor(y))) +
+  geom_hline(yintercept = 0, color = "grey40") + 
+  geom_histogram(position = "dodge", bins = 15) +
+  scale_x_continuous(labels = percent) +
+  scale_fill_manual(
+    labels = c("0" = "Non-tumor", "1" = "Tumor"),
+    values = colorspace::lighten(brewer_pal(palette = "Set1")(2), 0.27)
+  ) +
+  facet_wrap(~method, labeller = labeller(
+    method = c("mip" = "MI-SMM (MIQP)", 
+               "qp-heuristic" = "MI-SMM (HEURISTIC)")
+  )) +
+  theme_minimal() +  
+  theme(
+    legend.position = "right",
+    strip.background = element_rect(fill = "grey95", color = "grey70")
+  ) +
+  labs(
+    x = "Percent of spots with prediction of tumor",
+    y = "Count", 
+    fill = "Slide label"
+  )
+
+ggsave(here(fig_dir, "spot-prediction-percent-revision.pdf"), p, 
+       width = 8, height = 3)
+
+print(p)
+
+# tmp %>% 
+#   ggplot(aes(y = bags, x = pred, color = as.factor(y))) +
+#   geom_vline(xintercept = cp, linetype = "dashed", color = "grey50") +
+#   ggbeeswarm::geom_beeswarm() +
+#   facet_grid(y~.) +
+#   theme(legend.position = "none")
+```
+
+
+The figure provides context to the numbers from the tables. While the average is about 30\% positive, the range is somewhat large. However, from this model, the hierarchical structure is justified. The max assumption seems to be somewhat decent in practice, thought it's hard to tell from these metrics alone because the bag sizes differ. 
+
+
+
+
+```{r}
+wilcox.test(fp_mean_neg ~ method, data = f_stats) 
+
+wilcox.test(fp_mean_pos ~ method, data = f_stats) 
+```
+
+
