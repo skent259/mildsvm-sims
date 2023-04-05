@@ -33,22 +33,8 @@ misvm (4 combinations of features, method = ""heuristic"")",
 mildsvm mip
 smm
 misvm (4 combinations of features, method = ""qp-heuristic"")",
-1.0.3,Same as 1.0.0 and 1.0.1 except we re-run on the released mildsvm package v0.4.0,Same as 1.0.0,Same as 1.0.0,"mildsvm qp-heuristic
-mildsvm mip
-smm
-misvm (4 combinations of features, method = ""qp-heuristic"")",
-2.0.3,Same as 2.0.0 and 2.0.1 except we re-run on the released mildsvm package v0.4.0,Same as 2.0.0,Same as 1.0.0,"mildsvm qp-heuristic
-mildsvm mip
-smm
-misvm (4 combinations of features, method = ""qp-heuristic"")",
-3.0.3,Same as 3.0.0 and 3.0.1 except we re-run on the released mildsvm package v0.4.0,Same as 3.0.0,Same as 1.0.0,"mildsvm qp-heuristic
-mildsvm mip
-smm
-misvm (4 combinations of features, method = ""qp-heuristic"")",
-4.0.3,Same as 4.0.0 and 4.0.1 except we re-run on the released mildsvm package v0.4.0,Same as 4.0.0,Same as 1.0.0,"mildsvm qp-heuristic
-mildsvm mip
-smm
-misvm (4 combinations of features, method = ""qp-heuristic"")",
+5.0.3,"Same as 5.0.0, except we add methods for a MI-net (neural network) approach. For this, we use the full feature set (univariate, 2-way correlations)",We use the motivating data set of collagen fiber features as the dataset ,Same as 1.0.0,mi-net,
+5.0.4,"Same as 5.0.0, except we add method for MILR (multiple instance lasso regression) from the milr package. For this, we use the 4 combinations of features described in 5.0.0",We use the motivating data set of collagen fiber features as the dataset ,N/A,milr (4 combinations of features),
 5.1.0,"Same as 5.0.0, except models are re-run on the released mildsvm package v0.4.0, and models are saved in step 2 for further analysis",We use the motivating data set of collagen fiber features as the dataset ,Same as 1.0.0,"mildsvm qp-heuristic
 mildsvm mip
 ",
