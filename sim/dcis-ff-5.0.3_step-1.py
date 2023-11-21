@@ -8,13 +8,14 @@
 
 import json
 import sys
+import time
 from pathlib import Path
 
 [sys.path.append(i) for i in [".", ".."]]  # need to access datasets and models module
 
 import numpy as np
 import pandas as pd
-import scipy
+import scipy.stats
 import tensorflow as tf
 from tensorflow.keras import layers, losses, metrics
 from tensorflow.keras.callbacks import CSVLogger
@@ -144,6 +145,7 @@ model.compile(
 
 ## Train model ---------------------------------------------------------------#
 
+t_start = time.time()
 csv_log = CSVLogger(filename=output_dir + f"dcis-ff-5.0.3-1_log_i={i}.csv")
 
 STEP_SIZE_TRAIN = train_generator.n // train_generator.batch_size
@@ -153,8 +155,9 @@ model.fit(
     epochs=200,
     # epochs=50,
     callbacks=[csv_log],
-    verbose=2,
+    verbose=0,
 )
+t_end = time.time()
 
 ## Compute metrics on test set -----------------------------------------------#
 
@@ -162,5 +165,7 @@ eval_info = {key: eval_spec[key][i] for key in ["rep", "fold"]}
 
 metrics1 = model.evaluate(test_generator)
 metrics2 = {i: j for (i, j) in zip(["loss", "auc", "accuracy"], metrics1)}
-metrics_df = pd.DataFrame({"i": i, **eval_info, **metrics2}, index=[0])
+metrics_df = pd.DataFrame(
+    {"i": i, **eval_info, **metrics2, "time": t_end - t_start}, index=[0]
+)
 metrics_df.to_csv(output_dir + f"dcis-ff-5.0.3-1_metrics_i={i}.csv")
