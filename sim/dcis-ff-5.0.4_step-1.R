@@ -85,7 +85,7 @@ model_param <-
                 method = NA, 
                 lambda = -1,
                 lambdaCriterion = "deviance",
-                nfold = 10, 
+                nfold = 5, 
                 maxit = 500,
                 .fns = .fns,
                 cor = c(TRUE, FALSE))
@@ -136,6 +136,7 @@ out <- eval_spec_this_batch %>%
     kernel = NULL,
     train = c(.x$train, .x$val),
     test = .x$test,
+    save = TRUE
   )) %>%
   bind_cols(eval_spec_this_batch)
 
