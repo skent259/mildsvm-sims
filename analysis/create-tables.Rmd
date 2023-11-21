@@ -15,6 +15,7 @@ knitr::opts_chunk$set(
 )
 
 library(tidyverse)
+library(milr)
 library(here)
 library(glue)
 library(scales)
@@ -150,7 +151,7 @@ results_mod <- results %>%
          sim = str_sub(sim, 1, 3)) %>% 
   select(method_name, sim, everything())
 
-results_mod <-
+results_mod2 <-
   results_mod %>% 
   group_by(method_name, fun, method, kernel, .fns, cor, rep) %>% 
   summarize(auc = mean(auc), 
@@ -160,10 +161,10 @@ results_mod <-
 
 methods_to_show <- tribble(
   ~method, ~short_name, ~color, 
-  "MILR (univariate cor)", "MILR (UNIV1, UNIV2, COR)", "#000000FF",
-  "MILR (baseline cor)", "MILR (UNIV1, COR)", "#000000FF",
-  "MILR (univariate)", "MILR (UNIV1, UNIV2)", "#000000FF",
-  "MILR (baseline)", "MILR (UNIV1)", "#000000FF",
+  "MILR (univariate cor)", "MILR (UNIV1, UNIV2, COR)", "#0868ACFF",
+  "MILR (baseline cor)", "MILR (UNIV1, COR)", "#0A81D6FF",
+  "MILR (univariate)", "MILR (UNIV1, UNIV2)", "#1597F4FF",
+  "MILR (baseline)", "MILR (UNIV1)", "#3CA8F6FF",
   "MINET ()", "MI-net (UNIV1, UNIV2, COR)", "#000000FF",
   "MISVM (qp-heuristic radial univariate cor)", "MI-SVM (UNIV1, UNIV2, COR)", "#13317DFF",
   "MISVM (qp-heuristic radial baseline cor)", "MI-SVM (UNIV1, COR)", "#434C99FF",
@@ -182,7 +183,7 @@ methods_to_show <- tribble(
 table_type <- "latex" # "latex"
 
 auc_metrics <-
-  results_mod %>% 
+  results_mod2 %>% 
   filter(method_name %in% methods_to_show$method) %>%
   summarize(auc_mean = mean(auc), 
             auc_sd = sd(auc),
@@ -203,11 +204,82 @@ tbl <- auc_metrics %>%
 
 ```{r fiber-results}
 tbl %>% 
-  kable_standard(caption = "Summary of Results",
+  kable_standard(caption = "Summary of predictive performance",
                  col.names = c("Method", "Mean", "SD"),
                  align = "lrr",
                  escape = FALSE) %>% 
   add_header_above(c(" " = 1, "AUROC" = 2))
 
+```
+
+## MILR table for revision comments 
+
+
+```{r}
+
+milr_stats <- 
+  results_mod %>% 
+  filter(fun == "milr") %>% 
+  mutate(
+    n_feat = map_dbl(fit, ~sum(coef(.x) != 0))
+  ) %>% 
+  group_by(method_name, fun, method, kernel, .fns, cor, rep) %>% 
+  summarize(
+    max_auc = max(auc),
+    min_auc = min(auc),
+    n_feat_at_auc_max = mean(n_feat[auc == max_auc]),
+    auc = mean(auc),
+    mean_n_feat = mean(n_feat)
+  )
+
+tbl <-
+  milr_stats %>% 
+  summarize(
+    auc_mean = mean(auc), 
+    auc_sd = sd(auc),
+    n = n(), 
+    n_feat_mean = mean(mean_n_feat), 
+    auc_max = max(max_auc),
+    auc_min = min(min_auc), 
+    n_feat_at_auc_max = mean(n_feat_at_auc_max[auc_max == max_auc]),
+    .groups = "drop"
+  ) %>% 
+  arrange(factor(method_name, levels = rev(methods_to_show$method))) %>% 
+  left_join(methods_to_show, by = c("method_name" = "method")) %>% 
+  select(short_name, auc_mean, auc_sd, auc_max, auc_min, n_feat_mean, n_feat_at_auc_max)
+
+```
+
+
+```{r milr-supplement}
+tbl %>% 
+  kable_standard(caption = "Summary of MILR Results",
+                 col.names = c("Method", "Mean", "SD", "Max", "Min", "Mean", "N at Max AUC"),
+                 align = "lrrrrrr",
+                 digits = 3, 
+                 escape = FALSE) %>% 
+  add_header_above(c(" " = 1, "AUROC" = 4, "N features" = 2))
+
+```
+
+
+```{r}
+feature_stats <- 
+  results_mod %>% 
+  filter(fun == "milr") %>% 
+  group_by(method_name) %>%
+  summarize(
+    n = n(), 
+    features = list(map(fit, ~names(which(coef(.x) != 0))) %>% reduce(c)),
+    feature_counts = list(sort(table(features))),
+    top_features = map2(feature_counts, n, ~ names(which(.x / n > 0.75)))
+  ) 
+
+best_features <- feature_stats %>% 
+  select(method_name, top_features) %>% 
+  unnest_longer(top_features)
+
+write_csv(best_features, here("analysis", "dcis-ff_5.0.4_milr-best-features.csv"))
+  
 ```
 
