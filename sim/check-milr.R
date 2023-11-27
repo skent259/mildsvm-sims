@@ -32,6 +32,7 @@ get_kernel <- function(sigma_) {
   kernels[[nm]]
 }
 
+best_features <- read_csv(here("analysis/dcis-ff_5.0.4_milr-best-features.csv"))
 
 ## Model parameters -----------------------------------------------------------#
 
@@ -132,9 +133,17 @@ nan_cols <- purrr::map_lgl(train_df_scaled, ~ all(is.nan(.x)))
 train_df_scaled <- train_df_scaled[ !nan_cols]
 test_df_scaled <- test_df_scaled[ !nan_cols]
 
+# Check only keeping the best features
+top_features <- best_features %>% 
+  filter(method_name == "MILR (univariate)") %>% 
+  filter(top_features != "intercept") %>% 
+  pull(top_features)
+
+
 fit <- milr::milr(
   y = train_df_scaled$bag_label,
-  x = train_df_scaled[, 4:ncol(train_df_scaled)],
+  # x = train_df_scaled[, 4:ncol(train_df_scaled)],
+  x = train_df_scaled[, top_features],
   bag = train_df_scaled$bag_name,
   lambda = row$lambda,
   lambdaCriterion = row$lambdaCriterion,
@@ -150,7 +159,8 @@ predict_milr <- function(object, new_data, type = "raw") {
   return(tibble::tibble(.pred = raw[, 1]))
 }
 
-pred <- predict_milr(fit, new_data = as.matrix(test_df_scaled[, 4:ncol(test_df_scaled)]), type = "raw")
+# pred <- predict_milr(fit, new_data = as.matrix(test_df_scaled[, 4:ncol(test_df_scaled)]), type = "raw")
+pred <- predict_milr(fit, new_data = as.matrix(test_df_scaled[, top_features]), type = "raw")
 
 
 distinct(pred) # All the same prediction because all the coefficients are 0
