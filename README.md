@@ -11,6 +11,6 @@ The main model code relies on the `mildsvm` package in R, which can be found her
 
 ## A note on fiber features data
 
-Because the motivating dataset of collagen fiber features is not included, a artificially simulated dataset of similar structure is included in this repository. The details for this simulation are provided in data/create-artificial-data_dcis.R. 
+Because the motivating dataset of collagen fiber features is not included, an artificially simulated dataset of similar structure is included in this repository. The details for this simulation are provided in `data/create-artificial-data_dcis.R`. 
 
-Before running the fiber feature experiment files, you must run data/process-data_dcis-ARTIFICIAL.R to pre-compute the kernel matrices and set up the correct file names. 
+Before running the fiber feature experiment files, you must run `data/process-data_dcis-ARTIFICIAL.R` to pre-compute the kernel matrices and set up the correct file names. 

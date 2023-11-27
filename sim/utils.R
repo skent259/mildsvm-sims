@@ -380,8 +380,6 @@ evaluate_model2 <- function(row, df, kernel, train, test, verbose = TRUE, save =
         test_df <- test_df[, features]
       }
       
-      # browser()
-      
       fit <- switch(
         row$fun,
         "mildsvm" = mismm(
