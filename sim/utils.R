@@ -314,7 +314,7 @@ bag_level <- function(df, sample_level) {
 #' - `auc` The area under ROC based on the bag-level predictions
 #' - `time` The time taken for fitting and prediction
 #' - `mipgap` The reported gap from the MIP procedure in Gurobi, if applicable
-evaluate_model2 <- function(row, df, kernel, train, test, verbose = TRUE, save = FALSE) {
+evaluate_model2 <- function(row, df, kernel, train, test, verbose = TRUE, save = FALSE, features = NULL) {
   if (verbose) {
     cat("Function:", row$fun, ", ", 
         "Method:", row$method, "\n")
@@ -354,6 +354,30 @@ evaluate_model2 <- function(row, df, kernel, train, test, verbose = TRUE, save =
       if (row$fun == "milr") {
         train_df <- summarize_samples(train_df, .fns = row$.fns, cor = row$cor)
         test_df <- summarize_samples(test_df, .fns = row$.fns, cor = row$cor)
+        
+        # milr::milr() doesn't do internal scaling, so we must do scaling for it 
+        train_x_scaled <- scale(train_df[, 4:ncol(train_df)])
+        test_x_scaled <- scale(
+          test_df[, 4:ncol(test_df)],
+          center = attr(train_x_scaled, "scaled:center"),
+          scale = attr(train_x_scaled, "scaled:scale")
+        )
+        
+        train_df <- bind_cols(train_df[, 1:3], train_x_scaled)
+        test_df <- bind_cols(test_df[, 1:3], test_x_scaled)
+        
+        # After scaling, identity columns will become NaN, so remove them
+        nan_cols <- purrr::map_lgl(train_df, ~ all(is.nan(.x)))
+        
+        train_df <- train_df[ !nan_cols]
+        test_df <- test_df[ !nan_cols]
+      }
+      
+      if (!is.null(features)) {
+        features <- union(c("bag_label", "bag_name", "instance_name"), features)
+        
+        train_df <- train_df[, features]
+        test_df <- test_df[, features]
       }
       
       fit <- switch(
@@ -422,7 +446,7 @@ evaluate_model2 <- function(row, df, kernel, train, test, verbose = TRUE, save =
     } else {
       y_pred_bag <- classify_bags(pred$.pred, bags[test])
     }
-
+    
     out <- tibble(
       auc = as.double(pROC::auc(response = y_true_bag,
                                 predictor = y_pred_bag,
@@ -435,7 +459,7 @@ evaluate_model2 <- function(row, df, kernel, train, test, verbose = TRUE, save =
       f1 = caret::F_meas(data = factor(1*(y_pred_bag > 0), levels = c(0, 1)),
                          reference = factor(y_true_bag, levels = c(0, 1))),
       time = benchmark$time / 1e9,
-      mipgap = ifelse(row$method == "mip", fit$gurobi_fit$mipgap, NA),
+      mipgap = ifelse(row$method == "mip", fit$gurobi_fit$mipgap, NA)
     )
     if (save) {
       out$fit = list(fit)

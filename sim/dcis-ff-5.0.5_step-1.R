@@ -1,6 +1,6 @@
 ##-----------------------------------------------------------------------------#
-#' Simulation 5.0.4 - fiber features
-#'   Step 1 - Grid-search for optimal parameters and test set evaluation
+#' Simulation 5.0.5 - fiber features
+#'   MILR with the "best features" from 5.0.4
 #' 
 #' See simulation-spreadsheet.xlsx for details 
 ##-----------------------------------------------------------------------------#
@@ -36,10 +36,10 @@ i <- set_default(i, 1)
 batch_size <- set_default(batch_size, 1)
 output_dir <- set_default(output_dir, "output/5.0")
 data_dir <- set_default(data_dir, "data/processed")
-# 400 runs at `batch_size` = 1, for 400 total
+# 100 runs at `batch_size` = 1, for 100 total
 
 ## Output file ----------------------------------------------------------------#
-sim <- "5.0.4"
+sim <- "5.0.5"
 step <- "1"
 output_fname <- glue("sim-{sim}-{step}-results_i={str_pad(i, 4, pad = 0)}.rds")
 output_fname <- here(output_dir, output_fname)
@@ -61,6 +61,13 @@ get_kernel <- function(sigma_) {
   kernels[[nm]]
 }
 
+# Pull the "best features" from 5.0.4 to see if this can improve the model
+# The best features are determined as those picked by over 75% of the models 
+top_features <- read_csv(here("analysis/dcis-ff_5.0.4_milr-best-features.csv")) %>% 
+  filter(method_name == "MILR (univariate)") %>% 
+  filter(top_features != "intercept") %>% 
+  pull(top_features)
+
 ## Model parameters -----------------------------------------------------------#
 
 default_fns <- list(
@@ -74,7 +81,7 @@ univariate_fns <- list(
   qtl75 = ~quantile(.x, 0.75)
 )
 .fns <- list(
-  "baseline" = default_fns, 
+  # "baseline" = default_fns, 
   "univariate" = c(default_fns, univariate_fns)
 )
 
@@ -88,7 +95,7 @@ model_param <-
                 nfold = 5, 
                 maxit = 500,
                 .fns = .fns,
-                cor = c(TRUE, FALSE))
+                cor = FALSE)
   )
 
 
@@ -136,7 +143,8 @@ out <- eval_spec_this_batch %>%
     kernel = NULL,
     train = c(.x$train, .x$val),
     test = .x$test,
-    save = TRUE
+    save = TRUE,
+    features = top_features
   )) %>%
   bind_cols(eval_spec_this_batch)
 

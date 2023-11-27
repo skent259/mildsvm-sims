@@ -178,6 +178,11 @@ results_mod <- results %>%
 
 methods_to_show <- tribble(
   ~method, ~short_name, ~color, 
+  "MILR (univariate cor)", "MILR (UNIV1, UNIV2, COR)", "#0868ACFF",
+  "MILR (baseline cor)", "MILR (UNIV1, COR)", "#0A81D6FF",
+  "MILR (univariate)", "MILR (UNIV1, UNIV2)", "#1597F4FF",
+  "MILR (baseline)", "MILR (UNIV1)", "#3CA8F6FF",
+  "MINET ()", "MI-net (UNIV1, UNIV2, COR)", "#000000FF",
   "MISVM (qp-heuristic radial univariate cor)", "MI-SVM (UNIV1, UNIV2, COR)", "#13317DFF",
   "MISVM (qp-heuristic radial baseline cor)", "MI-SVM (UNIV1, COR)", "#434C99FF",
   "MISVM (qp-heuristic radial univariate)", "MI-SVM (UNIV1, UNIV2)", "#5F66AFFF",
@@ -286,8 +291,8 @@ for (s in unique(str_sub(sims, 1, 3))) {
 ## Figures from dcis-ff --------------------------------------------------------
 ##-----------------------------------------------------------------------------#
 
-sims <- c("5.0.0")
-steps <- c(2)
+sims <- c("5.0.0", "5.0.3", "5.0.4")
+steps <- c(2, 2, 1)
 res_dir <- "output"
 
 results <- 
@@ -299,9 +304,10 @@ results_mod <- results %>%
   mutate(method_name = glue("{str_to_upper(fun)} (",
                             "{ifelse(is.na(method), '', glue('{method}'))}",
                             "{ifelse(fun == 'misvm', glue(' {kernel} '), '')}", 
-                            "{ifelse(fun == 'misvm', names(.fns), '')}",
-                            "{ifelse(fun == 'misvm', ifelse(cor, ' cor', ''), '')})"),
-         sim = str_sub(sim, 1, 3)) %>% 
+                            "{ifelse(fun == 'misvm' | fun == 'milr', names(.fns), '')}",
+                            "{ifelse(fun == 'misvm' | fun == 'milr', ifelse(cor, ' cor', ''), '')})"),
+         sim = str_sub(sim, 1, 3),
+         sum_time = ifelse(is.na(sum_time), 0, sum_time)) %>% 
   select(method_name, sim, everything())
 
 results_mod <-
@@ -313,11 +319,15 @@ results_mod <-
 
 ## Appendix - Training time results figure for each sim -----------------------#
 
+results_mod %>% 
+  filter(fun == "milr") %>% 
+  select(time)
+
 p <- results_mod %>% 
   mutate(time_hr = time / 60 / 60) %>% 
   create_results_plot2(
     x = time_hr, 
-    methods = methods_to_show,
+    methods = methods_to_show %>% filter(method != "MINET ()"),
     facets = NULL
   ) + 
   scale_x_continuous(labels = scales::number_format(big.mark = ",")) + 
