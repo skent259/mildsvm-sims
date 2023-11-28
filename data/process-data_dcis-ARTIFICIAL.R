@@ -18,8 +18,9 @@ proc_dir <- "data/processed"
 
 ## Pull in data ---------------------------------------------------------------#
 
-d <- readRDS(here(proc_dir, "ARTIFICIAL-mild-dcis-ff.rds")) 
-
+# d <- readRDS(here(proc_dir, "ARTIFICIAL-mild-dcis-ff.rds")) 
+d <- read_csv(here(proc_dir, "ARTIFICIAL-mild-dcis-ff.csv"))
+d <- mildsvm::as_mild_df(d)
 
 ## Save output ----------------------------------------------------------------#
 saveRDS(d, here(proc_dir, "mild-dcis-ff.rds"))

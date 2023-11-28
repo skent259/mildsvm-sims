@@ -51,14 +51,14 @@ new_info <- df[info_cols]
 new_info <- new_info %>% 
   mutate(
     bag_name = as.numeric(factor(bag_name)),
-    bag_name = paste0("bag-", bag_name)
+    bag_name = paste0("b", bag_name)
   )
 
 new_info <- new_info %>% 
   group_by(bag_label, bag_name) %>% 
   mutate(
     instance_name = as.numeric(factor(instance_name)),
-    instance_name = paste0(bag_name, "_inst-", instance_name)
+    instance_name = paste0(bag_name, "-i", instance_name)
   ) %>% 
   ungroup()
 
@@ -124,4 +124,9 @@ class(d) <- class(df)
 
 # Save output
 saveRDS(d, here(proc_dir, "ARTIFICIAL-mild-dcis-ff.rds"))
+
+# Tiny version for compactness
+d %>% 
+  mutate(across(all_of(x_cols), ~round(.x, digits = 1))) %>% 
+  write_csv(here(proc_dir, "ARTIFICIAL-mild-dcis-ff.csv"))
 

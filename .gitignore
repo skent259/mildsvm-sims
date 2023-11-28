@@ -55,6 +55,7 @@ mildsvm-sims-gurobi-logs*.xlsx
 *.csv
 debug/
 !ARTIFICIAL-mild-dcis-ff.rds
+!ARTIFICIAL-mild-dcis-ff.csv
 
 .vscode/
 
