@@ -301,7 +301,7 @@ p <- f_stats %>%
   scale_x_continuous(labels = percent) +
   scale_fill_manual(
     labels = c("0" = "Non-tumor", "1" = "Tumor"),
-    values = colorspace::lighten(brewer_pal(palette = "Set1")(2), 0.27)
+    values = colorspace::lighten(brewer_pal(palette = "Set1")(3)[2:3], 0.27)
   ) +
   facet_wrap(~method, labeller = labeller(
     method = c("mip" = "MI-SMM (MIQP)", 

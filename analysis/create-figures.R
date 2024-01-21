@@ -70,7 +70,7 @@ p_ex_a <-
   ) +
   scale_color_brewer(name = "Subject", palette = "Set1",
                      limits = rev, labels = 1:2) +
-  scale_shape(name = "Label", limits = 0:1, labels = c("Non-tumor", "Tumor")) + 
+  scale_shape(name = "Slide label", limits = 0:1, labels = c("Non-tumor", "Tumor")) + 
   common_elements
 
 # p_ex_a 
